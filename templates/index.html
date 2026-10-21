@@ -1,0 +1,274 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ClassGuard — control de red del aula</title>
+<style>
+  :root{
+    --bg:#eef1f5; --card:#fff; --border:#d6dbe3; --ink:#1f2d3d; --muted:#6b7280;
+    --restrict:#d64545; --restrict-hi:#b83c3c;
+    --success:#2f9e44; --success-hi:#268239;
+    --neutral:#e2e6ec; --neutral-hi:#d2d8e0;
+    --amber-bg:#fff8ec; --amber-bd:#f0d9a8; --amber:#b9770e;
+    --ok:#1e8449; --err:#c0392b;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+       font-family:system-ui,-apple-system,"Segoe UI",Roboto,"DejaVu Sans",sans-serif;}
+  header{background:var(--ink);color:#fff;padding:16px 22px;}
+  header h1{margin:0;font-size:22px;}
+  header p{margin:2px 0 0;color:#9fb0c3;font-size:14px;}
+  .main{display:flex;flex-direction:column;min-height:calc(100vh - 150px);}
+  /* margin:auto centra en vertical cuando el contenido cabe; si crece, el
+     contenedor se expande y queda alineado arriba sin recortarse. */
+  .page{max-width:820px;width:100%;margin:auto;padding:16px;}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:10px;
+        padding:16px;margin-bottom:16px;}
+  .sec{font-size:11px;font-weight:700;letter-spacing:.5px;color:var(--muted);
+       text-transform:uppercase;margin:0 0 12px;}
+  .row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+  .info{color:var(--ink);font-size:14px;line-height:1.5;margin:10px 0 0;}
+  .info b{font-weight:600;}
+  label.fld{font-size:14px;}
+  input[type=password],input[type=number]{
+    font:inherit;padding:8px 10px;border:1px solid var(--border);border-radius:7px;
+    outline:none;}
+  input[type=password]{width:220px;}
+  input[type=number]{width:72px;}
+  input:focus{border-color:var(--ink);}
+  button{font:inherit;font-weight:600;border:0;border-radius:8px;cursor:pointer;
+         padding:11px 14px;color:#fff;transition:background .12s;}
+  button.small{padding:7px 12px;font-weight:600;}
+  button:disabled{opacity:.55;cursor:not-allowed;}
+  .b-restrict{background:var(--restrict);} .b-restrict:hover:not(:disabled){background:var(--restrict-hi);}
+  .b-success{background:var(--success);} .b-success:hover:not(:disabled){background:var(--success-hi);}
+  .b-neutral{background:var(--neutral);color:var(--ink);}
+  .b-neutral:hover:not(:disabled){background:var(--neutral-hi);}
+  .actions{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;}
+  .actions .span2{grid-column:span 2;}
+  .pending{background:var(--amber-bg);border-color:var(--amber-bd);}
+  .pending .txt{color:var(--amber);font-size:14px;line-height:1.5;}
+  .hidden{display:none !important;}
+  .timerbox{font-family:"DejaVu Sans Mono",monospace;font-weight:700;
+            font-size:18px;color:var(--restrict);margin-left:auto;}
+  .logcard{display:flex;flex-direction:column;}
+  #log{height:45vh;min-height:240px;overflow:auto;background:#fbfcfd;
+       border:1px solid var(--border);border-radius:8px;padding:10px 12px;
+       font-family:"DejaVu Sans Mono",monospace;font-size:13px;white-space:pre-wrap;
+       line-height:1.5;}
+  #log .ok{color:var(--ok);} #log .err{color:var(--err);}
+  #log .info{color:var(--ink);} #log .head{color:var(--ink);font-weight:700;}
+  .bar{display:flex;align-items:center;gap:12px;padding:6px 18px 14px;color:var(--muted);
+       font-size:14px;}
+  .bar .right{margin-left:auto;display:flex;gap:10px;}
+  .err-banner{background:#fdecea;border:1px solid #f5c6c0;color:#a33;border-radius:8px;
+              padding:10px 12px;font-size:14px;margin-bottom:12px;}
+</style>
+</head>
+<body>
+<header>
+  <h1>ClassGuard</h1>
+  <p>Control de red del aula durante exámenes</p>
+</header>
+
+<main class="main">
+<div class="page">
+    <div class="err-banner hidden" id="errBanner"></div>
+
+    <div class="card">
+      <p class="sec">Configuración</p>
+      <div class="row">
+        <button class="small b-neutral" onclick="document.getElementById('cfgFile').click()">Cargar .json…</button>
+        <button class="small b-neutral" onclick="reloadCfg()">Recargar config</button>
+        <input type="file" id="cfgFile" accept=".json,application/json" class="hidden" onchange="uploadCfg(this)">
+        <span id="cfgName" style="color:var(--muted)">config.json</span>
+      </div>
+      <p class="info" id="info">Cargando…</p>
+      <div class="row" style="margin-top:14px;">
+        <label class="fld">Contraseña sudo:</label>
+        <input type="password" id="pw" autocomplete="off">
+        <label class="fld"><input type="checkbox" id="showpw" onchange="togglePw()"> ver</label>
+      </div>
+    </div>
+
+    <div class="card">
+      <p class="sec">Acciones del examen</p>
+      <div class="actions">
+        <button class="b-restrict" onclick="action('blockall')">Cortar internet</button>
+        <button class="b-restrict" onclick="action('whitelist')">Solo lista blanca</button>
+        <button class="b-restrict" onclick="action('blockai')">Bloquear IA</button>
+        <button class="b-success span2" onclick="action('restore')">Restaurar examen</button>
+        <button class="b-neutral" onclick="action('status')">Ver estado</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <p class="sec">Temporizador de examen</p>
+      <div class="row">
+        <label class="fld">Duración:</label>
+        <input type="number" id="minutes" min="0" max="600" step="5" value="0">
+        <span style="color:var(--muted)">min · 0 = sin auto-restaurar</span>
+        <span class="timerbox" id="timer"></span>
+        <button class="small b-neutral" id="cancelTimer" onclick="cancelTimer()" disabled>Cancelar</button>
+      </div>
+    </div>
+
+    <div class="card pending hidden" id="pendingCard">
+      <div class="row">
+        <span class="txt" id="pendingTxt"></span>
+        <button class="small b-success" style="margin-left:auto" onclick="restorePending()">Restaurar pendientes</button>
+      </div>
+    </div>
+
+    <!-- Registro, siempre visible debajo de los controles -->
+    <div class="card logcard" id="logCol">
+      <p class="sec">Registro</p>
+      <div id="log"></div>
+    </div>
+</div>
+</main>
+
+<div class="bar">
+  <span id="status">Listo.</span>
+  <span class="right">
+    <button class="small b-restrict" id="cancelAction" onclick="cancelAction()" disabled>Cancelar operación</button>
+  </span>
+</div>
+
+<script>
+const TOKEN = "{{ token }}";
+const $ = id => document.getElementById(id);
+let running = false;
+
+function hdr(){ return {"Content-Type":"application/json","X-Token":TOKEN}; }
+
+function togglePw(){ $("pw").type = $("showpw").checked ? "text" : "password"; }
+
+function setRunning(r){
+  running = r;
+  document.querySelectorAll(".actions button").forEach(b => b.disabled = r);
+  $("cancelAction").disabled = !r;
+  $("status").textContent = r ? "Trabajando…" : "Listo.";
+}
+
+function logLine(text, cls){
+  const el = document.createElement("div");
+  el.className = cls || "info";
+  el.textContent = text;
+  $("log").appendChild(el);
+  $("log").scrollTop = $("log").scrollHeight;
+}
+
+let lastCfg = null;      // último payload de config (net, count, …)
+let lastAlive = null;    // {alive,total} tras el último ping
+
+function setInfoLine(){
+  if(!lastCfg || !lastCfg.ok){
+    $("info").textContent = (lastCfg && lastCfg.error) ? "—" : "Sin configuración válida.";
+    return;
+  }
+  const d = lastCfg;
+  const eq = (lastAlive && lastAlive.total === d.count)
+             ? `${lastAlive.alive} / ${d.count} encendidos` : `${d.count}`;
+  $("info").innerHTML =
+    `<b>Aula:</b> ${d.net} &nbsp;|&nbsp; <b>equipos:</b> ${eq} &nbsp;|&nbsp; `+
+    `<b>usuario SSH:</b> ${d.ssh_user} &nbsp;|&nbsp; <b>excluido (profesor):</b> ${d.excluded.join(", ")||"—"}`;
+}
+
+function renderInfo(d){
+  if(d.error){ $("errBanner").textContent = "⚠ " + d.error; $("errBanner").classList.remove("hidden"); }
+  else $("errBanner").classList.add("hidden");
+  lastCfg = d;
+  setInfoLine();
+  // pendientes
+  const p = d.pending || [];
+  if(p.length){
+    $("pendingTxt").textContent = `⚠ ${p.length} equipo(s) de un examen anterior sin restaurar: ${p.join(", ")}`;
+    $("pendingCard").classList.remove("hidden");
+  } else $("pendingCard").classList.add("hidden");
+  if(typeof d.timer === "number") renderTimer(d.timer);
+  if(typeof d.running === "boolean") setRunning(d.running);
+}
+
+function renderTimer(sec){
+  if(sec > 0){
+    const m = String(Math.floor(sec/60)).padStart(2,"0");
+    const s = String(sec%60).padStart(2,"0");
+    $("timer").textContent = "⏱ " + m + ":" + s;
+    $("cancelTimer").disabled = false;
+  } else {
+    $("timer").textContent = "";
+    $("cancelTimer").disabled = true;
+  }
+}
+
+async function post(url, body){
+  const r = await fetch(url, {method:"POST", headers:hdr(), body:JSON.stringify(body||{})});
+  const d = await r.json().catch(()=>({}));
+  if(!r.ok) alert(d.error || ("Error " + r.status));
+  return {ok:r.ok, data:d};
+}
+
+async function action(mode){
+  if(running) return;
+  const pw = $("pw").value;
+  if(!pw){ alert("Escribe la contraseña sudo."); return; }
+  const minutes = parseInt($("minutes").value||"0",10) || 0;
+  const blocking = ["blockall","whitelist","blockai"].includes(mode);
+  if(blocking){
+    const extra = minutes>0 ? `\nSe restaurará solo en ${minutes} min.` : "";
+    if(!confirm(`Acción: ${mode}.${extra}\n¿Continuar?`)) return;
+  }
+  await post("/api/action", {mode, password:pw, minutes});
+}
+
+async function restorePending(){
+  const pw = $("pw").value;
+  if(!pw){ alert("Escribe la contraseña sudo."); return; }
+  if(!confirm("Restaurar los equipos pendientes. ¿Continuar?")) return;
+  await post("/api/restore_pending", {password:pw});
+}
+
+function cancelTimer(){ post("/api/cancel_timer", {}); }
+function cancelAction(){
+  $("cancelAction").disabled = true;
+  $("status").textContent = "Cancelando…";
+  post("/api/cancel_action", {});
+}
+async function reloadCfg(){ const {data} = await post("/api/reload", {}); renderInfo(data); }
+
+async function uploadCfg(input){
+  const file = input.files && input.files[0];
+  input.value = "";               // permite volver a elegir el mismo archivo
+  if(!file) return;
+  const content = await file.text();
+  const {ok, data} = await post("/api/upload_config", {content});
+  if(ok){
+    $("cfgName").textContent = file.name + " → config.json";
+    renderInfo(data);
+  }
+}
+
+// --- SSE: registro y estado en vivo ---
+function connect(){
+  const es = new EventSource("/api/events?t=" + encodeURIComponent(TOKEN));
+  es.onmessage = ev => {
+    const m = JSON.parse(ev.data);
+    switch(m.type){
+      case "snapshot": renderInfo(m); break;
+      case "info":     renderInfo(m); break;
+      case "clear":    $("log").innerHTML = ""; lastAlive = null; setInfoLine(); break;
+      case "hosts":    lastAlive = {alive:m.alive, total:m.total}; setInfoLine(); break;
+      case "run":      setRunning(m.running); break;
+      case "head":     logLine(m.text, "head"); break;
+      case "log":      logLine(m.text, m.level); break;
+      case "timer":    renderTimer(m.remaining); break;
+    }
+  };
+  es.onerror = () => { setTimeout(connect, 1500); es.close(); };
+}
+connect();
+</script>
+</body>
+</html>

@@ -1,0 +1,36 @@
+# Dominios de servicios/APIs de IA a bloquear en modo "blockai" (uno por línea).
+# El resto de internet sigue funcionando.
+# Nota: se bloquea por IP resuelta de estos dominios; amplía la lista según
+# tus necesidades. Un alumno con acceso directo a una IP cruda podría evadirlo.
+
+# Chatbots / asistentes
+chat.openai.com
+chatgpt.com
+openai.com
+api.openai.com
+claude.ai
+anthropic.com
+api.anthropic.com
+gemini.google.com
+bard.google.com
+copilot.microsoft.com
+perplexity.ai
+poe.com
+character.ai
+huggingface.co
+you.com
+deepseek.com
+chat.deepseek.com
+mistral.ai
+x.ai
+grok.com
+meta.ai
+cohere.com
+api.cohere.ai
+
+# Asistentes de código
+github.com/features/copilot
+api.githubcopilot.com
+copilot-proxy.githubusercontent.com
+codeium.com
+tabnine.com

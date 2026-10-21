@@ -1,0 +1,7 @@
+# Dominios permitidos en modo "whitelist" (uno por línea).
+# Todo lo demás de internet queda bloqueado. La LAN del aula sigue disponible.
+# Las líneas que empiezan por # son comentarios.
+
+# Ejemplos (sustituye por los tuyos):
+ausiasmarch.net
+aules.edu.gva.es

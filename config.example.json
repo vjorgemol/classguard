@@ -1,0 +1,22 @@
+{
+  "subnet": "192.168.1.0/24",
+  "host_range": [1, 254],
+  "teacher_ip": "192.168.1.50",
+  "gateway": "192.168.1.1",
+  "exclude": ["192.168.1.1"],
+
+  "ssh_user": "depinf",
+  "ssh_timeout": 5,
+  "parallelism": 20,
+
+  "ping_first": true,
+  "ping_timeout": 1,
+  "ping_workers": 64,
+
+  "retries": 2,
+  "restore_retries": 5,
+  "retry_delay": 15,
+
+  "whitelist_file": "whitelist.txt",
+  "ai_blocklist_file": "ai-blocklist.txt"
+}
