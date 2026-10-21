@@ -151,3 +151,7 @@ restaurar (apagados, etc.):
 Para exámenes puntuales en equipos gestionados, esta herramienta es práctica y
 reversible. Si buscas algo infranqueable, combínala con filtrado en el router
 del aula o un DNS controlado (p. ej. las mismas listas en un Pi-hole/AdGuard).
+
+## Licencia
+
+[MIT](LICENSE) © 2026 Víctor Jorge Molina
