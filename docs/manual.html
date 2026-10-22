@@ -1,0 +1,420 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Manual de ClassGuard</title>
+<style>
+  :root{
+    --bg:#eef1f5; --card:#fff; --border:#d6dbe3; --ink:#1f2d3d; --muted:#5f6876;
+    --head:#1f2d3d; --head-sub:#9fb0c3;
+    --restrict:#d64545; --success:#2f9e44; --neutral:#e2e6ec; --neutral-ink:#1f2d3d;
+    --amber-bg:#fff8ec; --amber-bd:#f0d9a8; --amber:#9a6209;
+    --ok:#1e8449; --err:#c0392b; --info:#2d5d8a;
+    --code-bg:#f3f5f8; --log-bg:#fbfcfd;
+    --note-bg:#eef4fb; --note-bd:#c9dbef;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#14191f; --card:#1c232c; --border:#2e3845; --ink:#e3e8ee; --muted:#9aa5b2;
+      --head:#0d1116; --head-sub:#8a9bb0;
+      --restrict:#c94848; --success:#2c8f40; --neutral:#2e3845; --neutral-ink:#e3e8ee;
+      --amber-bg:#2a2214; --amber-bd:#5a4520; --amber:#e3b25c;
+      --ok:#5cc983; --err:#ef7b6e; --info:#7fb2e5;
+      --code-bg:#232b35; --log-bg:#161c23;
+      --note-bg:#18232f; --note-bd:#2c4258;
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#14191f; --card:#1c232c; --border:#2e3845; --ink:#e3e8ee; --muted:#9aa5b2;
+    --head:#0d1116; --head-sub:#8a9bb0;
+    --restrict:#c94848; --success:#2c8f40; --neutral:#2e3845; --neutral-ink:#e3e8ee;
+    --amber-bg:#2a2214; --amber-bd:#5a4520; --amber:#e3b25c;
+    --ok:#5cc983; --err:#ef7b6e; --info:#7fb2e5;
+    --code-bg:#232b35; --log-bg:#161c23;
+    --note-bg:#18232f; --note-bd:#2c4258;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;background:var(--bg);color:var(--ink);line-height:1.6;font-size:16px;
+       font-family:system-ui,-apple-system,"Segoe UI",Roboto,"DejaVu Sans",sans-serif;}
+  header{background:var(--head);color:#fff;padding:28px 16px;}
+  header .in{max-width:860px;margin:0 auto;}
+  header h1{margin:0;font-size:28px;letter-spacing:-.3px;}
+  header p{margin:4px 0 0;color:var(--head-sub);}
+  main{max-width:860px;margin:0 auto;padding:24px 16px 48px;}
+  nav.toc{background:var(--card);border:1px solid var(--border);border-radius:10px;
+          padding:16px 20px;margin-bottom:28px;}
+  nav.toc p{margin:0 0 8px;font-size:12px;font-weight:700;letter-spacing:.5px;
+            text-transform:uppercase;color:var(--muted);}
+  nav.toc ol{margin:0;padding-left:20px;columns:2;column-gap:32px;}
+  nav.toc li{break-inside:avoid;}
+  nav.toc a{color:var(--ink);text-decoration:none;}
+  nav.toc a:hover{text-decoration:underline;}
+  section{margin-bottom:36px;scroll-margin-top:16px;}
+  h2{font-size:22px;margin:0 0 12px;padding-bottom:6px;border-bottom:2px solid var(--border);}
+  h3{font-size:17px;margin:22px 0 8px;}
+  p,li{max-width:72ch;}
+  a{color:var(--info);}
+  code,kbd,pre{font-family:"DejaVu Sans Mono",ui-monospace,Menlo,Consolas,monospace;font-size:.88em;}
+  code{background:var(--code-bg);padding:1px 5px;border-radius:4px;}
+  kbd{background:var(--card);border:1px solid var(--border);border-bottom-width:2px;
+      padding:0 5px;border-radius:4px;}
+  pre{background:var(--code-bg);border:1px solid var(--border);border-radius:8px;
+      padding:12px 14px;overflow-x:auto;line-height:1.5;}
+  pre code{background:none;padding:0;font-size:1em;}
+  table{border-collapse:collapse;width:100%;margin:8px 0;font-size:15px;}
+  th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--border);vertical-align:top;}
+  th{font-size:13px;color:var(--muted);font-weight:600;}
+  .tablewrap{overflow-x:auto;}
+  .steps{counter-reset:s;list-style:none;padding:0;margin:12px 0;}
+  .steps>li{counter-increment:s;position:relative;padding:0 0 14px 44px;}
+  .steps>li::before{content:counter(s);position:absolute;left:0;top:0;width:30px;height:30px;
+       border-radius:50%;background:var(--ink);color:var(--bg);font-weight:700;
+       display:flex;align-items:center;justify-content:center;font-size:14px;}
+  .steps>li strong:first-child{display:block;}
+  .note,.warn{border-radius:8px;padding:12px 14px;margin:14px 0;border:1px solid;}
+  .note{background:var(--note-bg);border-color:var(--note-bd);}
+  .warn{background:var(--amber-bg);border-color:var(--amber-bd);}
+  .warn b.t{color:var(--amber);}
+  .note p,.warn p{margin:0;}
+  .btn{display:inline-block;font-weight:600;font-size:13px;border-radius:6px;padding:2px 9px;
+       color:#fff;white-space:nowrap;}
+  .btn.r{background:var(--restrict);} .btn.g{background:var(--success);}
+  .btn.n{background:var(--neutral);color:var(--neutral-ink);}
+  /* Maqueta de la interfaz */
+  figure{margin:16px 0;}
+  figcaption{font-size:14px;color:var(--muted);margin-top:8px;}
+  .mock{border:1px solid var(--border);border-radius:10px;overflow:hidden;background:var(--bg);}
+  .mock .mh{background:var(--head);color:#fff;padding:10px 14px;font-weight:700;}
+  .mock .mh span{display:block;font-weight:400;font-size:12px;color:var(--head-sub);}
+  .mock .mb{padding:12px;}
+  .mcard{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:10px 12px;
+         margin-bottom:10px;position:relative;}
+  .mcard.pend{background:var(--amber-bg);border-color:var(--amber-bd);color:var(--amber);font-size:13px;}
+  .msec{font-size:10px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--muted);
+        margin-bottom:8px;}
+  .mrow{display:flex;gap:6px;flex-wrap:wrap;align-items:center;font-size:13px;}
+  .mgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;}
+  .mgrid .btn{text-align:center;padding:7px 4px;white-space:normal;}
+  .mgrid .s2{grid-column:span 2;}
+  .mfield{border:1px solid var(--border);border-radius:5px;padding:2px 8px;min-width:110px;
+          color:var(--muted);background:var(--card);}
+  .mlog{background:var(--log-bg);border:1px solid var(--border);border-radius:6px;padding:8px 10px;
+        font-family:"DejaVu Sans Mono",monospace;font-size:12px;line-height:1.55;white-space:pre-wrap;
+        overflow-x:auto;}
+  .mlog .ok{color:var(--ok);} .mlog .err{color:var(--err);} .mlog .inf{color:var(--info);}
+  .mlog .hd{font-weight:700;}
+  .mbar{display:flex;justify-content:space-between;align-items:center;font-size:12px;color:var(--muted);
+        padding:0 12px 10px;}
+  .pin{position:absolute;top:-9px;right:-9px;width:22px;height:22px;border-radius:50%;
+       background:var(--info);color:#fff;font-size:12px;font-weight:700;display:flex;
+       align-items:center;justify-content:center;}
+  .legend{list-style:none;padding:0;}
+  .legend li{display:flex;gap:10px;margin-bottom:6px;}
+  .legend .pin{position:static;flex:none;margin-top:2px;}
+  details{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:10px 14px;
+          margin-bottom:8px;}
+  details summary{cursor:pointer;font-weight:600;}
+  details p{margin:8px 0 2px;}
+  footer{max-width:860px;margin:0 auto;padding:0 16px 32px;color:var(--muted);font-size:14px;}
+  @media (max-width:600px){
+    header h1{font-size:23px;}
+    nav.toc ol{columns:1;}
+    .mgrid{grid-template-columns:1fr 1fr;}
+    .mgrid .s2{grid-column:span 2;}
+  }
+  @media print{
+    body{background:#fff;color:#000;}
+    header{background:#fff;color:#000;border-bottom:2px solid #000;}
+    header p{color:#444;}
+    nav.toc{display:none;}
+    section{break-inside:avoid-page;}
+    details{border:none;padding:0;}
+  }
+</style>
+</head>
+<body>
+<header>
+  <div class="in">
+    <h1>Manual de uso de ClassGuard</h1>
+    <p>Control de la red del aula durante los exámenes · guía para el profesorado</p>
+  </div>
+</header>
+
+<main>
+  <nav class="toc" aria-label="Índice">
+    <p>Contenido</p>
+    <ol>
+      <li><a href="#que-es">Qué es ClassGuard</a></li>
+      <li><a href="#requisitos">Requisitos</a></li>
+      <li><a href="#instalacion">Instalación (una sola vez)</a></li>
+      <li><a href="#configuracion">Configuración del aula</a></li>
+      <li><a href="#examen">El día del examen, paso a paso</a></li>
+      <li><a href="#interfaz">La interfaz web</a></li>
+      <li><a href="#modos">Los modos de bloqueo</a></li>
+      <li><a href="#registro">Cómo leer el registro</a></li>
+      <li><a href="#pendientes">Equipos pendientes de restaurar</a></li>
+      <li><a href="#terminal">Uso desde la terminal</a></li>
+      <li><a href="#listas">Editar las listas de dominios</a></li>
+      <li><a href="#problemas">Problemas frecuentes</a></li>
+      <li><a href="#limites">Limitaciones</a></li>
+    </ol>
+  </nav>
+
+  <section id="que-es">
+    <h2>1. Qué es ClassGuard</h2>
+    <p>ClassGuard permite al profesor, <b>desde su propio ordenador</b>, cortar o limitar el acceso a internet de
+      todos los equipos de alumnos del aula durante un examen y devolverlos a la normalidad al terminar.</p>
+    <p>Funciona así: el programa recorre las IPs del aula, entra por SSH en cada equipo de alumno con el usuario
+      administrador del centro y aplica unas reglas de cortafuegos (<code>nftables</code>). Los equipos de alumno
+      no necesitan tener nada instalado.</p>
+    <div class="note"><p><b>Tu equipo nunca se toca.</b> ClassGuard detecta las IPs del ordenador del profesor y
+      las excluye automáticamente. La red local del aula también se mantiene, para poder seguir gestionando los
+      equipos mientras están bloqueados.</p></div>
+  </section>
+
+  <section id="requisitos">
+    <h2>2. Requisitos</h2>
+    <h3>Equipo del profesor</h3>
+    <ul>
+      <li>Linux con Python 3.</li>
+      <li>Conectado a la misma red que los alumnos.</li>
+    </ul>
+    <h3>Equipos de los alumnos</h3>
+    <ul>
+      <li>Ubuntu 22.04 o posterior.</li>
+      <li>Servicio SSH activo.</li>
+      <li>Un usuario con permisos <code>sudo</code> (el mismo en todos los equipos y con la misma contraseña).</li>
+    </ul>
+  </section>
+
+  <section id="instalacion">
+    <h2>3. Instalación (una sola vez)</h2>
+    <p>En el equipo del profesor, abre una terminal en la carpeta del proyecto y ejecuta:</p>
+<pre><code>python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+cp config.example.json config.json</code></pre>
+    <p>Después edita <code>config.json</code> con los datos de tu aula (siguiente apartado).</p>
+  </section>
+
+  <section id="configuracion">
+    <h2>4. Configuración del aula</h2>
+    <p>Todo se ajusta en el fichero <code>config.json</code>. Un ejemplo típico:</p>
+<pre><code>{
+  "subnet": "192.168.1.0/24",
+  "host_range": [1, 254],
+  "teacher_ip": "192.168.1.50",
+  "gateway": "192.168.1.1",
+  "exclude": ["192.168.1.1"],
+  "ssh_user": "depinf"
+}</code></pre>
+    <div class="tablewrap">
+    <table>
+      <thead><tr><th>Opción</th><th>Qué significa</th></tr></thead>
+      <tbody>
+        <tr><td><code>subnet</code></td><td>Red del aula, p. ej. <code>192.168.1.0/24</code>.</td></tr>
+        <tr><td><code>host_range</code></td><td>Primer y último número final de IP de los alumnos, p. ej. <code>[1, 254]</code> o <code>[101, 130]</code>.</td></tr>
+        <tr><td><code>teacher_ip</code></td><td>IP del equipo del profesor. Los alumnos siempre podrán comunicarse con ella.</td></tr>
+        <tr><td><code>gateway</code>, <code>exclude</code></td><td>IPs que nunca se deben tocar: router, servidores, impresoras…</td></tr>
+        <tr><td><code>ssh_user</code></td><td>Usuario administrador que existe en los equipos de alumno.</td></tr>
+        <tr><td><code>ping_first</code></td><td><code>true</code> (por defecto): antes de actuar se hace un ping y solo se trabaja con los equipos encendidos. Pon <code>false</code> si tu red bloquea el ping.</td></tr>
+        <tr><td><code>retries</code></td><td>Reintentos sobre los equipos que fallan (por defecto 2).</td></tr>
+        <tr><td><code>restore_retries</code></td><td>Reintentos al restaurar (por defecto 5).</td></tr>
+        <tr><td><code>retry_delay</code></td><td>Segundos de espera entre reintentos (por defecto 15).</td></tr>
+        <tr><td><code>whitelist_file</code>, <code>ai_blocklist_file</code></td><td>Ficheros con las listas de dominios (ver apartado 11).</td></tr>
+      </tbody>
+    </table>
+    </div>
+    <p>Si trabajas en varias aulas, puedes tener un <code>.json</code> para cada una y cargarlo desde la interfaz con
+      <span class="btn n">Cargar .json…</span>. Se copiará como <code>config.json</code>.</p>
+  </section>
+
+  <section id="examen">
+    <h2>5. El día del examen, paso a paso</h2>
+    <ol class="steps">
+      <li><strong>Enciende los equipos de los alumnos.</strong>
+        Conviene hacerlo antes de aplicar el bloqueo; los equipos apagados se omiten.</li>
+      <li><strong>Abre ClassGuard.</strong>
+        En la carpeta del proyecto, con el entorno activado, ejecuta <code>python3 classguard_web.py</code>.
+        El navegador se abre solo en <code>http://127.0.0.1:8765</code>.</li>
+      <li><strong>Comprueba la configuración.</strong>
+        En la tarjeta «Configuración» verás la red del aula, el número de equipos, el usuario SSH y la IP excluida
+        (la tuya). Si aparece un aviso rojo, revisa <code>config.json</code>.</li>
+      <li><strong>Escribe la contraseña <code>sudo</code></strong> del usuario administrador de los alumnos.</li>
+      <li><strong>Pulsa el modo que quieras</strong>:
+        <span class="btn r">Cortar internet</span>, <span class="btn r">Solo lista blanca</span> o
+        <span class="btn r">Bloquear IA</span>. Confirma en el aviso que aparece.</li>
+      <li><strong>Revisa el registro.</strong>
+        Cada equipo aparece con ✓ (aplicado) o ✗ (fallo). Espera a que la barra inferior vuelva a «Listo.».</li>
+      <li><strong>Al terminar el examen, pulsa <span class="btn g">Restaurar examen</span>.</strong>
+        Los equipos vuelven a la normalidad. No cierres la aplicación sin restaurar.</li>
+    </ol>
+    <div class="warn"><p><b class="t">Importante:</b> el bloqueo <b>no se quita solo</b>. Sigue activo aunque cierres
+      ClassGuard o reinicies tu equipo, hasta que pulses «Restaurar examen».</p></div>
+  </section>
+
+  <section id="interfaz">
+    <h2>6. La interfaz web</h2>
+    <figure>
+      <div class="mock" role="img" aria-label="Maqueta de la ventana de ClassGuard con sus cinco zonas numeradas">
+        <div class="mh">ClassGuard<span>Control de red del aula durante exámenes</span></div>
+        <div class="mb">
+          <div class="mcard"><span class="pin">1</span>
+            <div class="msec">Configuración</div>
+            <div class="mrow"><span class="btn n">Cargar .json…</span><span class="btn n">Recargar config</span>
+              <span style="color:var(--muted)">config.json</span></div>
+            <div class="mrow" style="margin-top:8px"><b>Aula:</b> 192.168.1.0/24 | <b>equipos:</b> 28 / 30 encendidos</div>
+            <div class="mrow" style="margin-top:8px">Contraseña sudo: <span class="mfield">••••••••</span> ☐ ver</div>
+          </div>
+          <div class="mcard"><span class="pin">2</span>
+            <div class="msec">Acciones del examen</div>
+            <div class="mgrid">
+              <span class="btn r">Cortar internet</span><span class="btn r">Solo lista blanca</span>
+              <span class="btn r">Bloquear IA</span><span class="btn g s2">Restaurar examen</span>
+              <span class="btn n">Ver estado</span>
+            </div>
+          </div>
+          <div class="mcard pend"><span class="pin">3</span>⚠ 2 equipo(s) de un examen anterior sin restaurar: 192.168.1.112, 192.168.1.118</div>
+          <div class="mcard"><span class="pin">4</span>
+            <div class="msec">Registro</div>
+<div class="mlog"><span class="hd">▶ Cortar internet — 30 equipos</span>
+<span class="ok">✓ 192.168.1.101   OK blockall</span>
+<span class="ok">✓ 192.168.1.102   OK blockall</span>
+<span class="err">✗ 192.168.1.107   timeout  (se reintentará)</span>
+<span class="inf">↻ Reintento 1/2 sobre 1 equipo(s)…</span></div>
+          </div>
+        </div>
+        <div class="mbar" style="position:relative"><span>Trabajando…</span><span class="btn r">Cancelar operación</span><span class="pin" style="top:-6px;right:4px">5</span></div>
+      </div>
+      <figcaption>Maqueta orientativa. Los textos exactos del registro pueden variar.</figcaption>
+    </figure>
+    <ul class="legend">
+      <li><span class="pin">1</span><span><b>Configuración:</b> datos del aula leídos de <code>config.json</code>, botones para cargar otro fichero o
+        releerlo tras editarlo, y el campo de la contraseña <code>sudo</code> (marca «ver» para comprobar lo que has escrito).</span></li>
+      <li><span class="pin">2</span><span><b>Acciones del examen:</b> los tres modos de bloqueo (rojo), restaurar (verde) y ver estado.
+        Se desactivan mientras hay una operación en curso.</span></li>
+      <li><span class="pin">3</span><span><b>Aviso de pendientes:</b> solo aparece si quedaron equipos sin restaurar de una sesión
+        anterior (ver apartado 9).</span></li>
+      <li><span class="pin">4</span><span><b>Registro:</b> resultado en vivo, equipo por equipo.</span></li>
+      <li><span class="pin">5</span><span><b>Barra de estado:</b> indica «Trabajando…» o «Listo.». <span class="btn r">Cancelar operación</span>
+        detiene la acción en curso cuanto antes, sin esperar a los reintentos.</span></li>
+    </ul>
+    <div class="note"><p><b>Seguridad:</b> la página solo es accesible desde tu propio equipo (<code>127.0.0.1</code>); nadie
+      más en la red la ve. La contraseña no se guarda en disco.</p></div>
+  </section>
+
+  <section id="modos">
+    <h2>7. Los modos de bloqueo</h2>
+    <div class="tablewrap">
+    <table>
+      <thead><tr><th>Botón</th><th>Qué hace en los equipos de alumno</th><th>Cuándo usarlo</th></tr></thead>
+      <tbody>
+        <tr><td><span class="btn r">Cortar internet</span></td><td>Corta <b>todo</b> internet. La red del aula sigue funcionando.</td>
+          <td>Exámenes sin ningún recurso en línea.</td></tr>
+        <tr><td><span class="btn r">Solo lista blanca</span></td><td>Corta internet <b>excepto</b> los dominios de <code>whitelist.txt</code>.</td>
+          <td>Exámenes en Moodle u otra plataforma concreta.</td></tr>
+        <tr><td><span class="btn r">Bloquear IA</span></td><td>Internet normal, pero bloquea los servicios de IA de <code>ai-blocklist.txt</code>.</td>
+          <td>Prácticas con internet en las que no se permite usar IA.</td></tr>
+        <tr><td><span class="btn g">Restaurar examen</span></td><td>Quita todas las reglas.</td>
+          <td>Siempre al acabar.</td></tr>
+        <tr><td><span class="btn n">Ver estado</span></td><td>Muestra qué modo tiene aplicado cada equipo. No cambia nada.</td>
+          <td>Para comprobar el aula en cualquier momento.</td></tr>
+      </tbody>
+    </table>
+    </div>
+    <p>Puedes pasar de un modo a otro directamente; no hace falta restaurar entre medias.</p>
+  </section>
+
+  <section id="registro">
+    <h2>8. Cómo leer el registro</h2>
+    <div class="tablewrap">
+    <table>
+      <thead><tr><th>Símbolo</th><th>Significado</th></tr></thead>
+      <tbody>
+        <tr><td><b>▶</b></td><td>Comienza una acción (con el número de equipos).</td></tr>
+        <tr><td style="color:var(--ok)"><b>✓</b></td><td>La acción se aplicó bien en ese equipo.</td></tr>
+        <tr><td style="color:var(--err)"><b>✗</b> … (se reintentará)</td><td>Falló, pero se volverá a intentar automáticamente.</td></tr>
+        <tr><td style="color:var(--info)"><b>↻</b></td><td>Ronda de reintento en marcha.</td></tr>
+        <tr><td style="color:var(--err)"><b>✗</b> (sin «se reintentará»)</td><td>Fallo definitivo tras agotar los reintentos.</td></tr>
+      </tbody>
+    </table>
+    </div>
+    <p>Al final aparece un resumen: <i>«Resultado: N OK, M con fallo»</i> y, si los hay, la lista de equipos sin respuesta.</p>
+    <p>Los equipos que fallan se reintentan solos varias veces, esperando unos segundos entre rondas. Al restaurar
+      se hacen más reintentos, para que un equipo que tarde en encenderse quede limpio igualmente. «Ver estado» no
+      reintenta.</p>
+  </section>
+
+  <section id="pendientes">
+    <h2>9. Equipos pendientes de restaurar</h2>
+    <p>ClassGuard recuerda qué equipos tienen un bloqueo aplicado. Si cierras la aplicación y alguno quedó sin
+      restaurar (por ejemplo, porque estaba apagado), al volver a abrirla verás un aviso amarillo:</p>
+    <div class="mcard pend" style="margin:10px 0">⚠ 2 equipo(s) de un examen anterior sin restaurar: 192.168.1.112, 192.168.1.118</div>
+    <p>Escribe la contraseña y pulsa <span class="btn g">Restaurar pendientes</span>. Solo se restauran esos equipos; el
+      aviso desaparece cuando todos quedan limpios.</p>
+  </section>
+
+  <section id="terminal">
+    <h2>10. Uso desde la terminal</h2>
+    <p>Si prefieres no usar el navegador, las mismas acciones están disponibles en la línea de comandos:</p>
+<pre><code>python3 classguard.py blockall     # cortar todo internet
+python3 classguard.py whitelist    # solo dominios de whitelist.txt
+python3 classguard.py blockai      # bloquear IA
+python3 classguard.py status       # ver estado
+python3 classguard.py restore      # volver a la normalidad</code></pre>
+    <p>Te pedirá una vez la contraseña <code>sudo</code>. Para usar otro fichero de configuración añade
+      <code>--config otra_aula.json</code>.</p>
+    <p>Opciones de la interfaz web: <code>--port 9000</code> cambia el puerto y <code>--no-open</code> evita que se
+      abra el navegador.</p>
+  </section>
+
+  <section id="listas">
+    <h2>11. Editar las listas de dominios</h2>
+    <p>Son ficheros de texto con <b>un dominio por línea</b>, en la carpeta del proyecto:</p>
+    <ul>
+      <li><code>whitelist.txt</code>: dominios permitidos en el modo «Solo lista blanca» (p. ej. el Moodle del centro).</li>
+      <li><code>ai-blocklist.txt</code>: dominios bloqueados en el modo «Bloquear IA».</li>
+    </ul>
+<pre><code>moodle.miinstituto.es
+aulavirtual.gva.es</code></pre>
+    <p>Los cambios se aplican la próxima vez que pulses el modo correspondiente.</p>
+    <div class="note"><p><b>Consejo:</b> antes del examen, prueba la lista blanca en un equipo y comprueba que la plataforma carga
+      completa. Algunas webs cargan recursos de otros dominios que también hay que añadir.</p></div>
+  </section>
+
+  <section id="problemas">
+    <h2>12. Problemas frecuentes</h2>
+    <details><summary>Aparece «No existe config.json»</summary>
+      <p>Copia <code>config.example.json</code> como <code>config.json</code>, ajústalo y pulsa <span class="btn n">Recargar config</span>.</p></details>
+    <details><summary>Un equipo sale siempre con ✗</summary>
+      <p>Comprueba que está encendido, conectado a la red, con SSH activo y que el usuario y la contraseña son correctos en ese equipo.
+        Si estaba apagado, enciéndelo y repite la acción: solo se aplicará a los que falten.</p></details>
+    <details><summary>Aparecen 0 equipos encendidos</summary>
+      <p>Quizá tu red bloquea el ping. Pon <code>"ping_first": false</code> en <code>config.json</code> y recarga la configuración.</p></details>
+    <details><summary>Con «Solo lista blanca» una web permitida no carga bien</summary>
+      <p>Probablemente usa otros dominios (imágenes, vídeos, inicio de sesión). Añádelos a <code>whitelist.txt</code> y vuelve a pulsar el modo.
+        Ten en cuenta que puede tardar hasta 30 segundos en actualizarse.</p></details>
+    <details><summary>La operación tarda mucho</summary>
+      <p>Normalmente se debe a los reintentos sobre equipos apagados. Puedes pulsar <span class="btn r">Cancelar operación</span>; los equipos
+        que ya mostraban ✓ conservan el cambio.</p></details>
+    <details><summary>Se ha cerrado la aplicación con el aula bloqueada</summary>
+      <p>No pasa nada: vuelve a abrirla y pulsa <span class="btn g">Restaurar examen</span> (o «Restaurar pendientes» si aparece el aviso).</p></details>
+  </section>
+
+  <section id="limites">
+    <h2>13. Limitaciones</h2>
+    <ul>
+      <li>El filtrado se hace por la IP de cada dominio. Algunos servicios cambian de IP a menudo; ClassGuard las
+        actualiza cada 30 segundos, pero puede haber un breve desfase.</li>
+      <li>Un alumno que conozca la contraseña <code>sudo</code> de su equipo puede deshacer el bloqueo. No la compartas.</li>
+      <li>«Bloquear IA» solo bloquea los servicios incluidos en la lista; los no listados siguen accesibles.</li>
+      <li>Para un control imposible de saltar, el filtrado debe hacerse en el router o cortafuegos del aula.</li>
+    </ul>
+  </section>
+</main>
+
+<footer>ClassGuard · Licencia MIT · © 2026 Víctor Jorge Molina</footer>
+</body>
+</html>
