@@ -21,6 +21,7 @@ import json
 import os
 import queue
 import secrets
+import socket
 import threading
 import webbrowser
 
@@ -58,11 +59,11 @@ _cfg_error = None
 # ---------------------------------------------------------------------------
 def load_cfg():
     global _cfg, _cfg_error
-    path = os.path.join(HERE, "config.json")
+    path = os.path.join(cg.DATA, "config.json")
     if not os.path.exists(path):
-        _cfg, _cfg_error = None, ("No existe config.json. Copia "
-                                  "config.example.json a config.json, edítalo y "
-                                  "pulsa «Recargar config».")
+        _cfg, _cfg_error = None, ("No existe config.json. Pulsa «Cargar .json…» "
+                                  "o copia config.example.json a config.json en "
+                                  f"{cg.DATA}, edítalo y pulsa «Recargar config».")
         return
     try:
         _cfg = cg.load_config(path)
@@ -126,9 +127,9 @@ def events():
 # ---------------------------------------------------------------------------
 def _list_path_for(mode):
     if mode == "whitelist":
-        return os.path.join(HERE, _cfg.get("whitelist_file", "whitelist.txt"))
+        return os.path.join(cg.DATA, _cfg.get("whitelist_file", "whitelist.txt"))
     if mode == "blockai":
-        return os.path.join(HERE, _cfg.get("ai_blocklist_file", "ai-blocklist.txt"))
+        return os.path.join(cg.DATA, _cfg.get("ai_blocklist_file", "ai-blocklist.txt"))
     return None
 
 
@@ -225,7 +226,7 @@ def api_upload_config():
         if key not in data:
             return jsonify(error=f"falta la clave obligatoria '{key}'"), 400
     try:
-        with open(os.path.join(HERE, "config.json"), "w") as fh:
+        with open(os.path.join(cg.DATA, "config.json"), "w") as fh:
             json.dump(data, fh, indent=2, ensure_ascii=False)
     except Exception as exc:  # noqa: BLE001
         return jsonify(error=f"no se pudo guardar config.json: {exc}"), 500
@@ -290,6 +291,11 @@ def api_cancel_action():
     return jsonify(ok=True)
 
 
+def _port_in_use(port):
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        return s.connect_ex(("127.0.0.1", port)) == 0
+
+
 def main():
     parser = argparse.ArgumentParser(description="Interfaz web de ClassGuard")
     parser.add_argument("--port", type=int, default=8765)
@@ -297,8 +303,16 @@ def main():
                         help="no abrir el navegador automáticamente")
     args = parser.parse_args()
 
-    load_cfg()
     url = f"http://127.0.0.1:{args.port}/"
+    if _port_in_use(args.port):
+        # Ya hay una instancia abierta (p. ej. doble clic otra vez en el
+        # AppImage): basta con mostrarla.
+        print(f"ClassGuard ya está en marcha en {url}")
+        if not args.no_open:
+            webbrowser.open(url)
+        return
+
+    load_cfg()
     print(f"ClassGuard web en {url}")
     print("Pulsa Ctrl+C para detener.")
     if not args.no_open:

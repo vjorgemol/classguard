@@ -39,7 +39,31 @@ Tres funciones, más la vuelta atrás:
 - **El equipo del profesor nunca se toca**: sus IPs locales se detectan con
   `ip -o -4 addr` y se excluyen del rango automáticamente.
 
-## Instalación (equipo del profesor)
+## AppImage (lo más sencillo)
+
+En cada versión publicada hay un `ClassGuard-<versión>-x86_64.AppImage` que
+incluye Python y todas las dependencias. Funciona en **Ubuntu 22.04 o
+posterior** sin instalar nada:
+
+```bash
+chmod +x ClassGuard-*-x86_64.AppImage
+./ClassGuard-*-x86_64.AppImage              # abre la interfaz web
+./ClassGuard-*-x86_64.AppImage cli status   # uso por terminal
+```
+
+También se puede abrir con doble clic (activando antes «Permitir ejecutar como
+programa» en sus propiedades). Si ya está abierto, volver a lanzarlo solo
+muestra la ventana existente en el navegador.
+
+Como el AppImage es de solo lectura, los datos editables se guardan en
+**`~/.config/classguard/`**: `config.json`, `whitelist.txt`, `ai-blocklist.txt`
+y `state.json`. La primera vez se crea con las listas por defecto y
+`config.example.json`. La configuración se puede cargar desde la propia web con
+«Cargar .json…».
+
+Para construirlo: `packaging/appimage/build.sh` (deja el resultado en `dist/`).
+
+## Instalación desde el código (equipo del profesor)
 
 ```bash
 cd /home/vicdejor/Proyectos/exam-offline

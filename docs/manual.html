@@ -191,6 +191,20 @@
 
   <section id="instalacion">
     <h2>3. Instalación (una sola vez)</h2>
+    <h3>Opción recomendada: AppImage</h3>
+    <p>Descarga el archivo <code>ClassGuard-…-x86_64.AppImage</code> de la
+      <a href="https://github.com/vjorgemol/classguard/releases/latest">última versión publicada</a>.
+      Lleva todo incluido y funciona en <b>Ubuntu 22.04 o posterior</b> sin instalar nada más.</p>
+    <ol>
+      <li>Haz clic derecho sobre el archivo → <i>Propiedades</i> → activa <i>Permitir ejecutar como programa</i>
+        (o en una terminal: <code>chmod +x ClassGuard-*.AppImage</code>).</li>
+      <li>Ábrelo con doble clic. Se abrirá ClassGuard en el navegador.</li>
+    </ol>
+    <p>Con el AppImage, tus datos (<code>config.json</code>, <code>whitelist.txt</code>, <code>ai-blocklist.txt</code>)
+      se guardan en la carpeta <code>~/.config/classguard/</code>. La primera vez se crea con las listas por defecto;
+      la configuración del aula la puedes cargar directamente desde la web con <span class="btn n">Cargar .json…</span>.</p>
+    <p>Si vuelves a abrir el AppImage cuando ya está en marcha, simplemente se muestra de nuevo en el navegador.</p>
+    <h3>Alternativa: desde el código fuente</h3>
     <p>En el equipo del profesor, abre una terminal en la carpeta del proyecto y ejecuta:</p>
 <pre><code>python3 -m venv .venv
 source .venv/bin/activate
@@ -237,7 +251,7 @@ cp config.example.json config.json</code></pre>
       <li><strong>Enciende los equipos de los alumnos.</strong>
         Conviene hacerlo antes de aplicar el bloqueo; los equipos apagados se omiten.</li>
       <li><strong>Abre ClassGuard.</strong>
-        En la carpeta del proyecto, con el entorno activado, ejecuta <code>python3 classguard_web.py</code>.
+        Haz doble clic en el AppImage (o, desde el código, ejecuta <code>python3 classguard_web.py</code>).
         El navegador se abre solo en <code>http://127.0.0.1:8765</code>.</li>
       <li><strong>Comprueba la configuración.</strong>
         En la tarjeta «Configuración» verás la red del aula, el número de equipos, el usuario SSH y la IP excluida
@@ -359,6 +373,7 @@ cp config.example.json config.json</code></pre>
   <section id="terminal">
     <h2>10. Uso desde la terminal</h2>
     <p>Si prefieres no usar el navegador, las mismas acciones están disponibles en la línea de comandos:</p>
+<p>Con el AppImage, antepón <code>cli</code>: <code>./ClassGuard-*.AppImage cli status</code>. Desde el código:</p>
 <pre><code>python3 classguard.py blockall     # cortar todo internet
 python3 classguard.py whitelist    # solo dominios de whitelist.txt
 python3 classguard.py blockai      # bloquear IA
@@ -372,7 +387,7 @@ python3 classguard.py restore      # volver a la normalidad</code></pre>
 
   <section id="listas">
     <h2>11. Editar las listas de dominios</h2>
-    <p>Son ficheros de texto con <b>un dominio por línea</b>, en la carpeta del proyecto:</p>
+    <p>Son ficheros de texto con <b>un dominio por línea</b>, en <code>~/.config/classguard/</code> si usas el AppImage o en la carpeta del proyecto si usas el código:</p>
     <ul>
       <li><code>whitelist.txt</code>: dominios permitidos en el modo «Solo lista blanca» (p. ej. el Moodle del centro).</li>
       <li><code>ai-blocklist.txt</code>: dominios bloqueados en el modo «Bloquear IA».</li>
@@ -387,7 +402,7 @@ aulavirtual.gva.es</code></pre>
   <section id="problemas">
     <h2>12. Problemas frecuentes</h2>
     <details><summary>Aparece «No existe config.json»</summary>
-      <p>Copia <code>config.example.json</code> como <code>config.json</code>, ajústalo y pulsa <span class="btn n">Recargar config</span>.</p></details>
+      <p>Pulsa <span class="btn n">Cargar .json…</span> y elige el fichero de tu aula, o copia <code>config.example.json</code> como <code>config.json</code> (en <code>~/.config/classguard/</code> con el AppImage), ajústalo y pulsa <span class="btn n">Recargar config</span>.</p></details>
     <details><summary>Un equipo sale siempre con ✗</summary>
       <p>Comprueba que está encendido, conectado a la red, con SSH activo y que el usuario y la contraseña son correctos en ese equipo.
         Si estaba apagado, enciéndelo y repite la acción: solo se aplicará a los que falten.</p></details>

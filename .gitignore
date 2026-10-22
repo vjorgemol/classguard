@@ -2,3 +2,5 @@ state.json
 config.json
 __pycache__/
 .venv/
+build/
+dist/

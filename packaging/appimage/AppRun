@@ -1,0 +1,15 @@
+#!/bin/bash
+# Lanzador de ClassGuard dentro del AppImage.
+#   ClassGuard.AppImage [--port N] [--no-open]   interfaz web (por defecto)
+#   ClassGuard.AppImage cli <accion> [...]       uso por terminal
+HERE="$(dirname "$(readlink -f "$0")")"
+PY="$HERE/opt/python/bin/python3"
+APP="$HERE/usr/share/classguard"
+export SSL_CERT_FILE="$HERE/opt/_internal/certs.pem"
+
+# -s -E: ignora paquetes y variables de Python del sistema.
+if [ "$1" = "cli" ]; then
+    shift
+    exec "$PY" -s -E "$APP/classguard.py" "$@"
+fi
+exec "$PY" -s -E "$APP/classguard_web.py" "$@"

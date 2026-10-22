@@ -28,6 +28,7 @@ import getpass
 import ipaddress
 import json
 import os
+import shutil
 import subprocess
 import sys
 import time
@@ -41,7 +42,32 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 AGENT_LOCAL = os.path.join(HERE, "agent.sh")
 AGENT_REMOTE = "/tmp/classguard_agent.sh"
 LIST_REMOTE = "/tmp/classguard_domains.txt"
-STATE_PATH = os.path.join(HERE, "state.json")
+DEFAULT_DATA_FILES = ("config.example.json", "whitelist.txt", "ai-blocklist.txt")
+
+
+def data_dir():
+    """Carpeta de los datos editables (config.json, listas, state.json).
+
+    Por defecto, junto al código. Dentro de un AppImage (solo lectura) se usa
+    ~/.config/classguard, que se siembra con las listas y el ejemplo de config
+    la primera vez. CLASSGUARD_DATA permite elegir otra carpeta.
+    """
+    path = os.environ.get("CLASSGUARD_DATA")
+    if not path and os.environ.get("APPIMAGE"):
+        base = os.environ.get("XDG_CONFIG_HOME") or os.path.expanduser("~/.config")
+        path = os.path.join(base, "classguard")
+    if not path:
+        return HERE
+    os.makedirs(path, exist_ok=True)
+    for name in DEFAULT_DATA_FILES:
+        dst = os.path.join(path, name)
+        if not os.path.exists(dst):
+            shutil.copy(os.path.join(HERE, name), dst)
+    return path
+
+
+DATA = data_dir()
+STATE_PATH = os.path.join(DATA, "state.json")
 
 BLOCKING_MODES = ("blockall", "whitelist", "blockai")
 
@@ -80,6 +106,9 @@ def local_ipv4s():
 
 
 def load_config(path):
+    if not os.path.exists(path):
+        sys.exit(f"No existe {path}. Copia config.example.json a config.json "
+                 f"en {os.path.dirname(path)} y edítalo.")
     with open(path) as fh:
         cfg = json.load(fh)
     required = ["subnet", "ssh_user"]
@@ -300,7 +329,7 @@ def main():
     parser.add_argument("action",
                         choices=["blockall", "whitelist", "blockai",
                                  "restore", "status"])
-    parser.add_argument("--config", default=os.path.join(HERE, "config.json"))
+    parser.add_argument("--config", default=os.path.join(DATA, "config.json"))
     args = parser.parse_args()
 
     if not os.path.exists(AGENT_LOCAL):
@@ -310,9 +339,9 @@ def main():
     # Lista de dominios según la acción.
     list_path = None
     if args.action == "whitelist":
-        list_path = os.path.join(HERE, cfg.get("whitelist_file", "whitelist.txt"))
+        list_path = os.path.join(DATA, cfg.get("whitelist_file", "whitelist.txt"))
     elif args.action == "blockai":
-        list_path = os.path.join(HERE, cfg.get("ai_blocklist_file", "ai-blocklist.txt"))
+        list_path = os.path.join(DATA, cfg.get("ai_blocklist_file", "ai-blocklist.txt"))
     if list_path and not os.path.exists(list_path):
         sys.exit(f"No encuentro la lista de dominios: {list_path}")
 
