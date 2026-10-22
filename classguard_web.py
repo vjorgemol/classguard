@@ -3,7 +3,7 @@
 classguard_web.py — Interfaz WEB local para el profesor.
 
 Sirve una página en http://127.0.0.1:8765 (solo localhost) con botones para
-cada modo, temporizador de examen y registro en vivo. Reutiliza toda la lógica
+cada modo y registro en vivo. Reutiliza toda la lógica
 de classguard.py (SSH + nftables + estado + reintentos).
 
 Uso:
@@ -22,7 +22,6 @@ import os
 import queue
 import secrets
 import threading
-import time
 import webbrowser
 
 try:
@@ -42,7 +41,6 @@ LABELS = {
     "restore":   "Restaurar examen",
     "status":    "Ver estado",
 }
-BLOCKING = ("blockall", "whitelist", "blockai")
 
 app = Flask(__name__, template_folder=os.path.join(HERE, "templates"))
 
@@ -53,7 +51,6 @@ _cancel_event = threading.Event()
 _subscribers = []            # colas SSE
 _cfg = None
 _cfg_error = None
-_timer = {"remaining": 0, "password": None, "cancel": None}
 
 
 # ---------------------------------------------------------------------------
@@ -78,7 +75,7 @@ def load_cfg():
 
 def info_payload():
     data = {"pending": sorted(cg.load_enforced()), "running": _running,
-            "timer": _timer["remaining"], "error": _cfg_error}
+            "error": _cfg_error}
     if _cfg:
         try:
             targets, net = cg.build_targets(_cfg)
@@ -135,7 +132,7 @@ def _list_path_for(mode):
     return None
 
 
-def _run_action(mode, password, targets, minutes=0):
+def _run_action(mode, password, targets):
     global _running
     with _lock:
         if _running:
@@ -178,52 +175,6 @@ def _run_action(mode, password, targets, minutes=0):
                  "text": f"Sin respuesta tras reintentos: {', '.join(pending)}"})
     publish({"type": "run", "running": False})
     publish({"type": "info", **info_payload()})
-
-    if mode in BLOCKING and minutes > 0:
-        _start_timer(minutes, password)
-
-
-# ---------------------------------------------------------------------------
-# Temporizador de examen (auto-restaurar)
-# ---------------------------------------------------------------------------
-def _cancel_timer(silent=False):
-    ev = _timer.get("cancel")
-    if ev is not None:
-        ev.set()
-    if _timer["remaining"] > 0 and not silent:
-        publish({"type": "log", "level": "info", "text": "⏱ Temporizador cancelado."})
-    _timer["remaining"] = 0
-    _timer["password"] = None
-    publish({"type": "timer", "remaining": 0})
-
-
-def _start_timer(minutes, password):
-    _cancel_timer(silent=True)
-    cancel = threading.Event()
-    _timer.update(remaining=minutes * 60, password=password, cancel=cancel)
-    publish({"type": "log", "level": "info",
-             "text": f"⏱ Temporizador: auto-restaurar en {minutes} min."})
-
-    def countdown():
-        while _timer["remaining"] > 0 and not cancel.is_set():
-            publish({"type": "timer", "remaining": _timer["remaining"]})
-            time.sleep(1)
-            _timer["remaining"] -= 1
-        if cancel.is_set():
-            return
-        publish({"type": "timer", "remaining": 0})
-        publish({"type": "log", "level": "head",
-                 "text": "⏱ Tiempo cumplido: restaurando la red…"})
-        pw = _timer["password"]
-        _timer["password"] = None
-        try:
-            targets, _ = cg.build_targets(_cfg)
-        except Exception:  # noqa: BLE001
-            targets = []
-        if targets and pw:
-            _run_action("restore", pw, targets)
-
-    threading.Thread(target=countdown, daemon=True).start()
 
 
 # ---------------------------------------------------------------------------
@@ -290,7 +241,6 @@ def api_action():
     body = request.get_json(force=True, silent=True) or {}
     mode = body.get("mode")
     password = body.get("password", "")
-    minutes = int(body.get("minutes", 0) or 0)
     if mode not in LABELS:
         return jsonify(error="acción desconocida"), 400
     if _cfg is None:
@@ -306,9 +256,8 @@ def api_action():
     if not targets:
         return jsonify(error="no hay equipos objetivo"), 400
 
-    _cancel_timer(silent=True)
     threading.Thread(target=_run_action,
-                     args=(mode, password, targets, minutes), daemon=True).start()
+                     args=(mode, password, targets), daemon=True).start()
     return jsonify(started=True)
 
 
@@ -327,18 +276,9 @@ def api_restore_pending():
         return jsonify(error="falta la contraseña"), 400
     if _running:
         return jsonify(error="ya hay una operación en curso"), 409
-    _cancel_timer(silent=True)
     threading.Thread(target=_run_action,
                      args=("restore", password, enforced), daemon=True).start()
     return jsonify(started=True)
-
-
-@app.route("/api/cancel_timer", methods=["POST"])
-def api_cancel_timer():
-    if not _check_token():
-        return jsonify(error="forbidden"), 403
-    _cancel_timer()
-    return jsonify(ok=True)
 
 
 @app.route("/api/cancel_action", methods=["POST"])

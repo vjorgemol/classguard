@@ -65,12 +65,6 @@ inferior) la aborta cuanto antes: descarta los equipos pendientes de contactar y
 no espera a los reintentos. **«Ver estado» no reintenta** (consultar equipos
 apagados no tiene sentido), así que termina en una sola pasada.
 
-**Temporizador de examen:** en «Duración» indica los minutos. Al pulsar un modo
-de bloqueo arranca una cuenta atrás y, al llegar a cero, se ejecuta `restore`
-**automáticamente** en todos los equipos. Con `0` no hay auto-restauración.
-Puedes pararla con «Cancelar». La contraseña se guarda en memoria solo mientras
-dura la cuenta atrás, para poder restaurar sola.
-
 **Seguridad de la web:** el servidor se ata **solo a `127.0.0.1`** (nadie más en
 la red lo ve) y la API exige un token aleatorio incrustado en la página, de modo
 que ninguna otra web abierta en el navegador puede enviarle peticiones. La
@@ -116,8 +110,7 @@ segundos entre ellas. Mientras hay reintentos pendientes verás `↻ Reintento�
 en el registro, y cada equipo solo se marca como fallo definitivo (✗) cuando se
 agotan los intentos. El `restore` usa más reintentos (`restore_retries`), de modo
 que un equipo que se encienda tarde tras el examen también queda limpio sin
-intervención. Esto se aplica igual en la interfaz web, en la terminal y en el
-`restore` que dispara el temporizador.
+intervención. Esto se aplica igual en la interfaz web y en la terminal.
 
 ### Reintento al reabrir la app
 

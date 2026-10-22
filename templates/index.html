@@ -50,8 +50,6 @@
   .pending{background:var(--amber-bg);border-color:var(--amber-bd);}
   .pending .txt{color:var(--amber);font-size:14px;line-height:1.5;}
   .hidden{display:none !important;}
-  .timerbox{font-family:"DejaVu Sans Mono",monospace;font-weight:700;
-            font-size:18px;color:var(--restrict);margin-left:auto;}
   .logcard{display:flex;flex-direction:column;}
   #log{height:45vh;min-height:240px;overflow:auto;background:#fbfcfd;
        border:1px solid var(--border);border-radius:8px;padding:10px 12px;
@@ -100,17 +98,6 @@
         <button class="b-restrict" onclick="action('blockai')">Bloquear IA</button>
         <button class="b-success span2" onclick="action('restore')">Restaurar examen</button>
         <button class="b-neutral" onclick="action('status')">Ver estado</button>
-      </div>
-    </div>
-
-    <div class="card">
-      <p class="sec">Temporizador de examen</p>
-      <div class="row">
-        <label class="fld">Duración:</label>
-        <input type="number" id="minutes" min="0" max="600" step="5" value="0">
-        <span style="color:var(--muted)">min · 0 = sin auto-restaurar</span>
-        <span class="timerbox" id="timer"></span>
-        <button class="small b-neutral" id="cancelTimer" onclick="cancelTimer()" disabled>Cancelar</button>
       </div>
     </div>
 
@@ -187,20 +174,7 @@ function renderInfo(d){
     $("pendingTxt").textContent = `⚠ ${p.length} equipo(s) de un examen anterior sin restaurar: ${p.join(", ")}`;
     $("pendingCard").classList.remove("hidden");
   } else $("pendingCard").classList.add("hidden");
-  if(typeof d.timer === "number") renderTimer(d.timer);
   if(typeof d.running === "boolean") setRunning(d.running);
-}
-
-function renderTimer(sec){
-  if(sec > 0){
-    const m = String(Math.floor(sec/60)).padStart(2,"0");
-    const s = String(sec%60).padStart(2,"0");
-    $("timer").textContent = "⏱ " + m + ":" + s;
-    $("cancelTimer").disabled = false;
-  } else {
-    $("timer").textContent = "";
-    $("cancelTimer").disabled = true;
-  }
 }
 
 async function post(url, body){
@@ -214,13 +188,11 @@ async function action(mode){
   if(running) return;
   const pw = $("pw").value;
   if(!pw){ alert("Escribe la contraseña sudo."); return; }
-  const minutes = parseInt($("minutes").value||"0",10) || 0;
   const blocking = ["blockall","whitelist","blockai"].includes(mode);
   if(blocking){
-    const extra = minutes>0 ? `\nSe restaurará solo en ${minutes} min.` : "";
-    if(!confirm(`Acción: ${mode}.${extra}\n¿Continuar?`)) return;
+    if(!confirm(`Acción: ${mode}.\n¿Continuar?`)) return;
   }
-  await post("/api/action", {mode, password:pw, minutes});
+  await post("/api/action", {mode, password:pw});
 }
 
 async function restorePending(){
@@ -230,7 +202,6 @@ async function restorePending(){
   await post("/api/restore_pending", {password:pw});
 }
 
-function cancelTimer(){ post("/api/cancel_timer", {}); }
 function cancelAction(){
   $("cancelAction").disabled = true;
   $("status").textContent = "Cancelando…";
@@ -263,7 +234,6 @@ function connect(){
       case "run":      setRunning(m.running); break;
       case "head":     logLine(m.text, "head"); break;
       case "log":      logLine(m.text, m.level); break;
-      case "timer":    renderTimer(m.remaining); break;
     }
   };
   es.onerror = () => { setTimeout(connect, 1500); es.close(); };
