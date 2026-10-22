@@ -9,6 +9,12 @@ con `sudo`.
 > el centro. No evade controles de terceros: aplica políticas de red a equipos
 > sobre los que ya se tiene acceso administrativo legítimo.
 
+## Descarga y manual
+
+- **Descarga:** [última versión publicada](https://github.com/vjorgemol/classguard/releases/latest)
+  (`classguard-vX.Y.Z.tar.xz`, listo para usar).
+- **Manual de uso:** <https://vjorgemol.github.io/classguard/manual.html>
+
 ## Qué hace
 
 Tres funciones, más la vuelta atrás:
