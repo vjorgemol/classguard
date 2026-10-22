@@ -60,6 +60,10 @@
   .bar{display:flex;align-items:center;gap:12px;padding:6px 18px 14px;color:var(--muted);
        font-size:14px;}
   .bar .right{margin-left:auto;display:flex;gap:10px;}
+  .closed{max-width:520px;margin:15vh auto;padding:24px;text-align:center;background:var(--card);
+          border:1px solid var(--border);border-radius:10px;}
+  .closed h2{margin:0 0 8px;font-size:20px;}
+  .closed p{margin:0;color:var(--muted);}
   .err-banner{background:#fdecea;border:1px solid #f5c6c0;color:#a33;border-radius:8px;
               padding:10px 12px;font-size:14px;margin-bottom:12px;}
 </style>
@@ -120,6 +124,7 @@
   <span id="status">Listo.</span>
   <span class="right">
     <button class="small b-restrict" id="cancelAction" onclick="cancelAction()" disabled>Cancelar operación</button>
+    <button class="small b-neutral" id="quitApp" onclick="quitApp()">Salir</button>
   </span>
 </div>
 
@@ -127,6 +132,7 @@
 const TOKEN = "{{ token }}";
 const $ = id => document.getElementById(id);
 let running = false;
+let closed = false;
 
 function hdr(){ return {"Content-Type":"application/json","X-Token":TOKEN}; }
 
@@ -207,6 +213,22 @@ function cancelAction(){
   $("status").textContent = "Cancelando…";
   post("/api/cancel_action", {});
 }
+async function quitApp(){
+  if(running){ alert("Hay una operación en curso. Cancélala antes de salir."); return; }
+  const p = (lastCfg && lastCfg.pending) || [];
+  const warn = p.length
+    ? `\n\n⚠ ${p.length} equipo(s) siguen con bloqueo. Seguirán bloqueados hasta que vuelvas a abrir ClassGuard y restaures.`
+    : "";
+  if(!confirm(`¿Cerrar ClassGuard?${warn}`)) return;
+  const {ok} = await post("/api/shutdown", {});
+  if(ok) showClosed();
+}
+function showClosed(){
+  closed = true;
+  document.body.innerHTML =
+    '<div class="closed"><h2>ClassGuard se ha cerrado</h2>' +
+    '<p>Ya puedes cerrar esta pestaña. Para volver a usarlo, abre de nuevo la aplicación.</p></div>';
+}
 async function reloadCfg(){ const {data} = await post("/api/reload", {}); renderInfo(data); }
 
 async function uploadCfg(input){
@@ -234,9 +256,10 @@ function connect(){
       case "run":      setRunning(m.running); break;
       case "head":     logLine(m.text, "head"); break;
       case "log":      logLine(m.text, m.level); break;
+      case "shutdown": es.close(); showClosed(); break;
     }
   };
-  es.onerror = () => { setTimeout(connect, 1500); es.close(); };
+  es.onerror = () => { es.close(); if(!closed) setTimeout(connect, 1500); };
 }
 connect();
 </script>

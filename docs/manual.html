@@ -264,6 +264,8 @@ cp config.example.json config.json</code></pre>
         Cada equipo aparece con ✓ (aplicado) o ✗ (fallo). Espera a que la barra inferior vuelva a «Listo.».</li>
       <li><strong>Al terminar el examen, pulsa <span class="btn g">Restaurar examen</span>.</strong>
         Los equipos vuelven a la normalidad. No cierres la aplicación sin restaurar.</li>
+      <li><strong>Pulsa <span class="btn n">Salir</span></strong> para cerrar ClassGuard.
+        Cerrar solo la pestaña del navegador no detiene la aplicación.</li>
     </ol>
     <div class="warn"><p><b class="t">Importante:</b> el bloqueo <b>no se quita solo</b>. Sigue activo aunque cierres
       ClassGuard o reinicies tu equipo, hasta que pulses «Restaurar examen».</p></div>
@@ -300,7 +302,7 @@ cp config.example.json config.json</code></pre>
 <span class="inf">↻ Reintento 1/2 sobre 1 equipo(s)…</span></div>
           </div>
         </div>
-        <div class="mbar" style="position:relative"><span>Trabajando…</span><span class="btn r">Cancelar operación</span><span class="pin" style="top:-6px;right:4px">5</span></div>
+        <div class="mbar" style="position:relative"><span>Trabajando…</span><span><span class="btn r">Cancelar operación</span> <span class="btn n">Salir</span></span><span class="pin" style="top:-6px;right:4px">5</span></div>
       </div>
       <figcaption>Maqueta orientativa. Los textos exactos del registro pueden variar.</figcaption>
     </figure>
@@ -313,7 +315,8 @@ cp config.example.json config.json</code></pre>
         anterior (ver apartado 9).</span></li>
       <li><span class="pin">4</span><span><b>Registro:</b> resultado en vivo, equipo por equipo.</span></li>
       <li><span class="pin">5</span><span><b>Barra de estado:</b> indica «Trabajando…» o «Listo.». <span class="btn r">Cancelar operación</span>
-        detiene la acción en curso cuanto antes, sin esperar a los reintentos.</span></li>
+        detiene la acción en curso cuanto antes, sin esperar a los reintentos. <span class="btn n">Salir</span> cierra ClassGuard
+        (avisa si quedan equipos bloqueados).</span></li>
     </ul>
     <div class="note"><p><b>Seguridad:</b> la página solo es accesible desde tu propio equipo (<code>127.0.0.1</code>); nadie
       más en la red la ve. La contraseña no se guarda en disco.</p></div>
@@ -414,6 +417,9 @@ aulavirtual.gva.es</code></pre>
     <details><summary>La operación tarda mucho</summary>
       <p>Normalmente se debe a los reintentos sobre equipos apagados. Puedes pulsar <span class="btn r">Cancelar operación</span>; los equipos
         que ya mostraban ✓ conservan el cambio.</p></details>
+    <details><summary>He cerrado la pestaña, ¿sigue ClassGuard abierto?</summary>
+      <p>Sí: la aplicación sigue en marcha en segundo plano. Vuelve a abrirla (doble clic en el AppImage) y aparecerá la misma
+        ventana; desde ahí puedes seguir trabajando o pulsar <span class="btn n">Salir</span>.</p></details>
     <details><summary>Se ha cerrado la aplicación con el aula bloqueada</summary>
       <p>No pasa nada: vuelve a abrirla y pulsa <span class="btn g">Restaurar examen</span> (o «Restaurar pendientes» si aparece el aviso).</p></details>
   </section>

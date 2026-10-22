@@ -291,6 +291,18 @@ def api_cancel_action():
     return jsonify(ok=True)
 
 
+@app.route("/api/shutdown", methods=["POST"])
+def api_shutdown():
+    if not _check_token():
+        return jsonify(error="forbidden"), 403
+    if _running:
+        return jsonify(error="hay una operación en curso; cancélala antes de salir"), 409
+    publish({"type": "shutdown"})
+    # Se cierra tras responder, para que la página reciba la confirmación.
+    threading.Timer(0.5, lambda: os._exit(0)).start()
+    return jsonify(ok=True)
+
+
 def _port_in_use(port):
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         return s.connect_ex(("127.0.0.1", port)) == 0

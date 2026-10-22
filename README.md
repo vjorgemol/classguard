@@ -66,7 +66,7 @@ Para construirlo: `packaging/appimage/build.sh` (deja el resultado en `dist/`).
 ## Instalación desde el código (equipo del profesor)
 
 ```bash
-cd /home/vicdejor/Proyectos/exam-offline
+cd classguard              # carpeta descomprimida o clonada
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 cp config.example.json config.json
@@ -94,6 +94,10 @@ Mientras una operación está en curso, el botón **«Cancelar operación»** (b
 inferior) la aborta cuanto antes: descarta los equipos pendientes de contactar y
 no espera a los reintentos. **«Ver estado» no reintenta** (consultar equipos
 apagados no tiene sentido), así que termina en una sola pasada.
+
+El botón **«Salir»** (barra inferior) detiene el servidor. Avisa si quedan
+equipos con bloqueo y no deja salir con una operación en curso. Cerrar solo la
+pestaña del navegador no detiene la aplicación.
 
 **Seguridad de la web:** el servidor se ata **solo a `127.0.0.1`** (nadie más en
 la red lo ve) y la API exige un token aleatorio incrustado en la página, de modo
