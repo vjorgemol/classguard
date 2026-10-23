@@ -29,6 +29,7 @@ import ipaddress
 import json
 import os
 import shutil
+import socket
 import subprocess
 import sys
 import time
@@ -70,6 +71,7 @@ def data_dir():
 
 DATA = data_dir()
 STATE_PATH = os.path.join(DATA, "state.json")
+MACS_PATH = os.path.join(DATA, "macs.json")
 
 BLOCKING_MODES = ("blockall", "whitelist", "blockai")
 
@@ -91,6 +93,83 @@ def save_enforced(hosts):
             json.dump({"enforced": sorted(hosts)}, fh, indent=2)
     except Exception:
         pass
+
+
+# ---------------------------------------------------------------------------
+# Wake-on-LAN: aprendizaje de MAC (desde ARP) y envío de magic packets.
+# ---------------------------------------------------------------------------
+def load_macs():
+    try:
+        with open(MACS_PATH) as fh:
+            return {str(k): str(v).lower() for k, v in json.load(fh).items()}
+    except Exception:
+        return {}
+
+
+def save_macs(macs):
+    try:
+        with open(MACS_PATH, "w") as fh:
+            json.dump(macs, fh, indent=2, sort_keys=True)
+    except Exception:
+        pass
+
+
+def update_macs(ips):
+    """Aprende las MAC de las IPs indicadas leyendo la tabla ARP (ip neigh).
+
+    Se llama tras los barridos de ping: con los equipos encendidos, el sistema
+    ya conoce su MAC, y así se pueden encender por WoL cuando estén apagados.
+    """
+    wanted = set(ips)
+    if not wanted:
+        return
+    try:
+        out = subprocess.check_output(["ip", "neigh", "show"], text=True)
+    except Exception:
+        return
+    macs = load_macs()
+    changed = False
+    for line in out.splitlines():
+        parts = line.split()
+        if len(parts) >= 1 and parts[0] in wanted and "lladdr" in parts:
+            mac = parts[parts.index("lladdr") + 1].lower()
+            if mac and macs.get(parts[0]) != mac:
+                macs[parts[0]] = mac
+                changed = True
+    if changed:
+        save_macs(macs)
+
+
+def known_macs(cfg):
+    """MAC conocidas: las aprendidas (macs.json) más el mapa 'macs' de config."""
+    macs = load_macs()
+    for ip, mac in (cfg.get("macs") or {}).items():
+        macs[str(ip)] = str(mac).lower()
+    return macs
+
+
+def _magic_packet(mac):
+    clean = mac.replace(":", "").replace("-", "").replace(".", "").strip()
+    if len(clean) != 12:
+        raise ValueError(f"MAC inválida: {mac}")
+    return b"\xff" * 6 + bytes.fromhex(clean) * 16
+
+
+def broadcast_for(cfg):
+    net = ipaddress.ip_network(cfg["subnet"], strict=False)
+    return str(net.broadcast_address)
+
+
+def wake(mac, broadcast, ports=(9, 7)):
+    """Envía el magic packet de WoL a la MAC por la dirección de difusión."""
+    pkt = _magic_packet(mac)
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    s.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+    try:
+        for port in ports:
+            s.sendto(pkt, (broadcast, port))
+    finally:
+        s.close()
 
 
 def local_ipv4s():
@@ -369,7 +448,13 @@ def ping_sweep(ips, timeout=1, workers=64, cancelled=lambda: False):
                 alive.append(futs[fut])
     finally:
         pool.shutdown(wait=not cancelled(), cancel_futures=cancelled())
-    return sorted(alive, key=_ip_key)
+    alive = sorted(alive, key=_ip_key)
+    if not cancelled():
+        try:
+            update_macs(alive)        # aprende MAC para poder encender por WoL
+        except Exception:
+            pass
+    return alive
 
 
 def drive_action(cfg, password, mode, list_path, targets, emit, note=None,

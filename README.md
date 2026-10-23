@@ -64,7 +64,8 @@ muestra la ventana existente en el navegador.
 
 Como el AppImage es de solo lectura, los datos editables se guardan en
 **`~/.config/classguard/`**: `config.json`, `whitelist.txt`, `ai-blocklist.txt`,
-`state.json` y las capturas en `capturas/`. La primera vez se crea con las listas por defecto y
+`state.json`, `macs.json` (MAC aprendidas para WoL) y las capturas en `capturas/`.
+La primera vez se crea con las listas por defecto y
 `config.example.json`. La configuración se puede cargar desde la propia web con
 «Cargar .json…».
 
@@ -151,11 +152,28 @@ La pestaña **«Pantallas»** muestra una rejilla con la pantalla de cada alumno
 - **«📷»** guarda una captura con fecha y hora (constancia).
 - **«⤢»** abre esa captura a tamaño completo.
 
-La fila **«A todos»** aplica estas acciones a **todos los equipos encendidos** a
-la vez (en paralelo): **Avisar** (con el texto del recuadro), **Bloquear**,
-**Desbloquear** y **Apagar**. Cada una pide confirmación (el apagado, doble).
-El apagado se lanza con `systemctl poweroff -i`, así que no lo bloquean las
-sesiones abiertas de los alumnos; útil para apagar el aula al terminar.
+La fila **«A todos»** aplica estas acciones a la vez (en paralelo). Sobre los
+equipos **encendidos**: **Avisar** (con el texto del recuadro), **Bloquear**,
+**Desbloquear** y **Apagar**. Y, aparte, **Encender** (Wake-on-LAN) sobre los
+**apagados**. Cada una pide confirmación (el apagado, doble).
+
+- **Apagar** se lanza con `systemctl poweroff -i`, así que no lo bloquean las
+  sesiones abiertas de los alumnos; útil para apagar el aula al terminar.
+- **Encender** envía un *magic packet* de Wake-on-LAN a la MAC de cada equipo.
+  ClassGuard **aprende las MAC** solo: cada vez que hace un barrido de ping con
+  los equipos encendidos (al abrir el mural o lanzar cualquier acción), guarda la
+  correspondencia IP→MAC en `macs.json`. Así, otro día puede encenderlos aunque
+  estén apagados. También puedes fijarlas a mano en `config.json`:
+
+  ```json
+  "macs": { "192.168.1.23": "aa:bb:cc:dd:ee:ff" }
+  ```
+
+  Requisitos del WoL: la **BIOS/UEFI** y la tarjeta de red de cada alumno deben
+  tener Wake-on-LAN **activado** (en Linux, `sudo ethtool -s eth0 wol g`), y el
+  equipo del profesor debe estar en la **misma red** (dominio de difusión). Si un
+  equipo nunca se ha visto encendido y no está en `macs.json` ni en config, no se
+  puede encender (ClassGuard avisa de que aún no conoce ninguna MAC).
 
 #### Cómo funciona el bloqueo
 

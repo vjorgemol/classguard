@@ -158,7 +158,8 @@
           <button class="small b-restrict" onclick="messageAll()">Avisar</button>
           <button class="small b-restrict" onclick="lockAll(false)">Bloquear</button>
           <button class="small b-success" onclick="lockAll(true)">Desbloquear</button>
-          <button class="small b-restrict" style="margin-left:auto" onclick="powerOffAll()">Apagar</button>
+          <button class="small b-success" style="margin-left:auto" onclick="wakeAll()">Encender</button>
+          <button class="small b-restrict" onclick="powerOffAll()">Apagar</button>
         </div>
         <div class="row" style="margin-top:12px;align-items:stretch;">
           <textarea id="msgText2" rows="2" style="flex:1;min-width:240px;font:inherit;
@@ -332,7 +333,17 @@ function updateTile(ip, file){
 function markTileOff(ip, msg){
   const t = tile(ip);
   t.classList.add("off");
-  t.querySelector("img").title = ip + " — " + (msg || "sin captura");
+  // Borra la captura: un equipo caído/apagado no debe seguir mostrando pantalla.
+  const img = t.querySelector("img");
+  img.removeAttribute("src");
+  img.title = ip + " — " + (msg || "sin captura");
+  const full = t.querySelector("a.full");
+  if(full) full.removeAttribute("href");
+  // si estaba marcado como bloqueado, ya no aplica
+  t.dataset.locked = "";
+  t.classList.remove("locked");
+  const lb = t.querySelector(".lockbadge");
+  if(lb) lb.textContent = "";
 }
 
 function screensProgress(m){
@@ -421,6 +432,12 @@ async function lockAll(unlock){
   const verb = unlock ? "Desbloquear" : "Bloquear";
   if(!confirm(verb + " la pantalla de TODOS los equipos encendidos. ¿Continuar?")) return;
   await post("/api/lock_all", {password:pw, unlock});
+}
+
+async function wakeAll(){
+  // WoL no necesita contraseña: envía magic packets a las MAC conocidas.
+  if(!confirm("Encender por Wake-on-LAN todos los equipos con MAC conocida. ¿Continuar?")) return;
+  await post("/api/wake_all", {});
 }
 
 async function powerOffAll(){

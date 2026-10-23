@@ -449,6 +449,8 @@ def _run_bulk(kind, password, text=None, unlock=False):
                          "text": f"{'✓' if ok else '✗'} {ip:<15} {msg}"})
                 if kind == "lock" and ok:
                     publish({"type": "lock", "ip": ip, "locked": (not unlock)})
+                elif kind == "poweroff" and ok:
+                    publish({"type": "screenfail", "ip": ip, "msg": "apagado"})
         publish({"type": "log", "level": "info", "text": f"Fin: {titles[kind]}"})
     finally:
         _bulk_running = False
@@ -497,6 +499,54 @@ def api_poweroff_all():
         return jsonify(error=err[0]), err[1]
     threading.Thread(target=_run_bulk, args=("poweroff", password),
                      daemon=True).start()
+    return jsonify(started=True)
+
+
+@app.route("/api/wake_all", methods=["POST"])
+def api_wake_all():
+    """Enciende por Wake-on-LAN todos los equipos con MAC conocida."""
+    global _bulk_running
+    if not _check_token():
+        return jsonify(error="forbidden"), 403
+    if _cfg is None:
+        return jsonify(error="config.json no válido"), 400
+    with _lock:
+        if _bulk_running:
+            return jsonify(error="ya hay una acción masiva en curso"), 409
+        _bulk_running = True
+
+    def worker():
+        global _bulk_running
+        try:
+            macs = cg.known_macs(_cfg)
+            if not macs:
+                publish({"type": "log", "level": "err",
+                         "text": "No hay MAC conocidas todavía. Con los equipos "
+                                 "encendidos, pulsa «Actualizar pantallas» (o "
+                                 "cualquier acción) una vez para aprenderlas; "
+                                 "o define 'macs' en config.json."})
+                return
+            try:
+                bcast = cg.broadcast_for(_cfg)
+            except Exception as exc:  # noqa: BLE001
+                publish({"type": "log", "level": "err", "text": f"subnet inválida: {exc}"})
+                return
+            publish({"type": "log", "level": "info",
+                     "text": f"▶ Encender por WoL — {len(macs)} equipo(s) con MAC conocida"})
+            for ip in sorted(macs, key=cg._ip_key):
+                mac = macs[ip]
+                try:
+                    cg.wake(mac, bcast)
+                    publish({"type": "log", "level": "ok",
+                             "text": f"✓ {ip:<15} magic packet → {mac}"})
+                except Exception as exc:  # noqa: BLE001
+                    publish({"type": "log", "level": "err",
+                             "text": f"✗ {ip:<15} {exc}"})
+            publish({"type": "log", "level": "info", "text": "Fin: Encender por WoL"})
+        finally:
+            _bulk_running = False
+
+    threading.Thread(target=worker, daemon=True).start()
     return jsonify(started=True)
 
 
