@@ -263,6 +263,26 @@ def lock_screen(ip, cfg, password, unlock=False):
         client.close()
 
 
+def power_off(ip, cfg, password):
+    """Apaga el equipo de un alumno. Devuelve (ip, ok, mensaje)."""
+    try:
+        client = _connect(ip, cfg, password)
+    except Exception as exc:
+        return ip, False, f"sin conexión SSH ({exc.__class__.__name__})"
+    try:
+        sftp = client.open_sftp()
+        sftp.put(AGENT_LOCAL, AGENT_REMOTE)
+        sftp.close()
+        rc, out, err = _run_agent(client, password, "poweroff")
+        if rc == 0:
+            return ip, True, out or "OK"
+        return ip, False, (err or out or f"código {rc}")
+    except Exception as exc:
+        return ip, False, f"error: {exc}"
+    finally:
+        client.close()
+
+
 def capture_screenshot(ip, cfg, password, out_dir, filename=None):
     """Captura el escritorio de un alumno y trae el PNG al equipo del profesor.
 

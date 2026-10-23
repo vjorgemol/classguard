@@ -13,6 +13,7 @@
 #   sudo bash agent.sh screenshot <archivo_salida.png>
 #   sudo bash agent.sh lock
 #   sudo bash agent.sh unlock
+#   sudo bash agent.sh poweroff
 #
 # Toda la configuración vive en una tabla nftables propia ("classguard"),
 # de modo que no interfiere con otras reglas y se puede borrar por completo.
@@ -429,6 +430,17 @@ do_lock() {
   fi
 }
 
+# ---------------------------------------------------------------------------
+# ACCIÓN: apagar el equipo. Se responde OK de inmediato y el apagado se lanza
+# unos segundos después (en segundo plano), para que la conexión SSH reciba la
+# confirmación antes de que la máquina se apague. '-i' ignora inhibidores
+# (sesiones abiertas), para que el apagado no quede bloqueado.
+# ---------------------------------------------------------------------------
+do_poweroff() {
+  setsid sh -c 'sleep 3; systemctl poweroff -i 2>/dev/null || poweroff -f' >/dev/null 2>&1 &
+  echo "OK apagando"
+}
+
 require_root
 case "$MODE" in
   blockall)   apply_blockall  ;;
@@ -440,5 +452,6 @@ case "$MODE" in
   screenshot) do_screenshot "${2:-}" ;;
   lock)       do_lock lock ;;
   unlock)     do_lock unlock ;;
+  poweroff)   do_poweroff ;;
   *) echo "Modo desconocido: $MODE" >&2; exit 2 ;;
 esac

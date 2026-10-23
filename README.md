@@ -152,8 +152,10 @@ La pestaña **«Pantallas»** muestra una rejilla con la pantalla de cada alumno
 - **«⤢»** abre esa captura a tamaño completo.
 
 La fila **«A todos»** aplica estas acciones a **todos los equipos encendidos** a
-la vez (en paralelo): **Avisar** (con el texto del recuadro), **Bloquear** y
-**Desbloquear**. Cada una pide confirmación.
+la vez (en paralelo): **Avisar** (con el texto del recuadro), **Bloquear**,
+**Desbloquear** y **Apagar**. Cada una pide confirmación (el apagado, doble).
+El apagado se lanza con `systemctl poweroff -i`, así que no lo bloquean las
+sesiones abiertas de los alumnos; útil para apagar el aula al terminar.
 
 #### Cómo funciona el bloqueo
 

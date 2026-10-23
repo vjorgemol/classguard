@@ -422,7 +422,8 @@ def _run_bulk(kind, password, text=None, unlock=False):
     try:
         alive = _alive_targets()
         titles = {"message": "Aviso a todos",
-                  "lock": "Desbloquear todos" if unlock else "Bloquear todos"}
+                  "lock": "Desbloquear todos" if unlock else "Bloquear todos",
+                  "poweroff": "Apagar todos"}
         publish({"type": "log", "level": "info",
                  "text": f"▶ {titles[kind]} — {len(alive)} equipo(s) encendido(s)"})
         if not alive:
@@ -432,6 +433,8 @@ def _run_bulk(kind, password, text=None, unlock=False):
         def one(ip):
             if kind == "message":
                 return cg.send_message(ip, _cfg, password, text)
+            if kind == "poweroff":
+                return cg.power_off(ip, _cfg, password)
             return cg.lock_screen(ip, _cfg, password, unlock=unlock)
 
         with cf.ThreadPoolExecutor(max_workers=workers) as pool:
@@ -480,6 +483,20 @@ def api_lock_all():
         return jsonify(error=err[0]), err[1]
     threading.Thread(target=_run_bulk, args=("lock", password),
                      kwargs={"unlock": unlock}, daemon=True).start()
+    return jsonify(started=True)
+
+
+@app.route("/api/poweroff_all", methods=["POST"])
+def api_poweroff_all():
+    if not _check_token():
+        return jsonify(error="forbidden"), 403
+    body = request.get_json(force=True, silent=True) or {}
+    password = body.get("password", "")
+    err = _bulk_precheck(password)
+    if err:
+        return jsonify(error=err[0]), err[1]
+    threading.Thread(target=_run_bulk, args=("poweroff", password),
+                     daemon=True).start()
     return jsonify(started=True)
 
 

@@ -158,6 +158,7 @@
           <button class="small b-restrict" onclick="messageAll()">Avisar</button>
           <button class="small b-restrict" onclick="lockAll(false)">Bloquear</button>
           <button class="small b-success" onclick="lockAll(true)">Desbloquear</button>
+          <button class="small b-restrict" style="margin-left:auto" onclick="powerOffAll()">Apagar</button>
         </div>
         <div class="row" style="margin-top:12px;align-items:stretch;">
           <textarea id="msgText2" rows="2" style="flex:1;min-width:240px;font:inherit;
@@ -420,6 +421,14 @@ async function lockAll(unlock){
   const verb = unlock ? "Desbloquear" : "Bloquear";
   if(!confirm(verb + " la pantalla de TODOS los equipos encendidos. ¿Continuar?")) return;
   await post("/api/lock_all", {password:pw, unlock});
+}
+
+async function powerOffAll(){
+  const pw = $("pw").value;
+  if(!pw){ alert("Escribe la contraseña sudo."); return; }
+  if(!confirm("⚠ APAGAR todos los equipos encendidos del aula. ¿Continuar?")) return;
+  if(!confirm("Esto cerrará las sesiones de los alumnos. ¿Seguro que quieres apagarlos?")) return;
+  await post("/api/poweroff_all", {password:pw});
 }
 
 function cancelAction(){
