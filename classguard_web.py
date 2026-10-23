@@ -26,7 +26,8 @@ import threading
 import webbrowser
 
 try:
-    from flask import Flask, Response, jsonify, render_template, request
+    from flask import (Flask, Response, jsonify, render_template, request,
+                       send_from_directory)
 except ImportError:
     raise SystemExit("Falta Flask. Instala con: pip install -r requirements.txt")
 
@@ -34,6 +35,7 @@ import classguard as cg
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 TOKEN = secrets.token_urlsafe(16)
+SHOTS_DIR = os.path.join(cg.DATA, "capturas")
 
 LABELS = {
     "blockall":  "Cortar internet",
@@ -52,6 +54,8 @@ _cancel_event = threading.Event()
 _subscribers = []            # colas SSE
 _cfg = None
 _cfg_error = None
+_screens_running = False     # hay un barrido del mural de pantallas en curso
+_bulk_running = False        # hay una acción masiva (aviso/bloqueo a todos) en curso
 
 
 # ---------------------------------------------------------------------------
@@ -280,6 +284,283 @@ def api_restore_pending():
     threading.Thread(target=_run_action,
                      args=("restore", password, enforced), daemon=True).start()
     return jsonify(started=True)
+
+
+def _valid_target(ip):
+    """La IP debe ser una IPv4 válida y estar dentro de la subred del aula."""
+    try:
+        import ipaddress
+        addr = ipaddress.ip_address(ip)
+    except ValueError:
+        return False
+    try:
+        net = ipaddress.ip_network(_cfg["subnet"], strict=False)
+    except Exception:
+        return False
+    return addr in net
+
+
+def _per_host_precheck(ip, password):
+    """Validaciones comunes a las acciones por equipo. Devuelve un error
+    (texto, código) o None si todo está correcto."""
+    if _cfg is None:
+        return "config.json no válido", 400
+    if not ip or not _valid_target(ip):
+        return "IP no válida o fuera de la subred del aula", 400
+    if not password:
+        return "falta la contraseña", 400
+    return None
+
+
+@app.route("/api/message", methods=["POST"])
+def api_message():
+    if not _check_token():
+        return jsonify(error="forbidden"), 403
+    body = request.get_json(force=True, silent=True) or {}
+    ip = (body.get("ip") or "").strip()
+    text = (body.get("text") or "").strip()
+    password = body.get("password", "")
+    err = _per_host_precheck(ip, password)
+    if err:
+        return jsonify(error=err[0]), err[1]
+    if not text:
+        return jsonify(error="falta el mensaje"), 400
+
+    def worker():
+        publish({"type": "log", "level": "info", "text": f"✉ Enviando aviso a {ip}…"})
+        _, ok, msg = cg.send_message(ip, _cfg, password, text)
+        publish({"type": "log", "level": "ok" if ok else "err",
+                 "text": f"{'✓' if ok else '✗'} {ip:<15} {msg}"})
+
+    threading.Thread(target=worker, daemon=True).start()
+    return jsonify(started=True)
+
+
+@app.route("/api/screenshot", methods=["POST"])
+def api_screenshot():
+    if not _check_token():
+        return jsonify(error="forbidden"), 403
+    body = request.get_json(force=True, silent=True) or {}
+    ip = (body.get("ip") or "").strip()
+    password = body.get("password", "")
+    err = _per_host_precheck(ip, password)
+    if err:
+        return jsonify(error=err[0]), err[1]
+
+    def worker():
+        publish({"type": "log", "level": "info", "text": f"📷 Capturando pantalla de {ip}…"})
+        _, ok, msg, local = cg.capture_screenshot(ip, _cfg, password, SHOTS_DIR)
+        publish({"type": "log", "level": "ok" if ok else "err",
+                 "text": f"{'✓' if ok else '✗'} {ip:<15} {msg}"})
+        if ok and local:
+            publish({"type": "shot", "src": "host", "ip": ip,
+                     "file": os.path.basename(local)})
+
+    threading.Thread(target=worker, daemon=True).start()
+    return jsonify(started=True)
+
+
+@app.route("/api/lock", methods=["POST"])
+def api_lock():
+    if not _check_token():
+        return jsonify(error="forbidden"), 403
+    body = request.get_json(force=True, silent=True) or {}
+    ip = (body.get("ip") or "").strip()
+    password = body.get("password", "")
+    unlock = bool(body.get("unlock"))
+    err = _per_host_precheck(ip, password)
+    if err:
+        return jsonify(error=err[0]), err[1]
+
+    def worker():
+        verb = "Desbloqueando" if unlock else "Bloqueando"
+        publish({"type": "log", "level": "info", "text": f"🔒 {verb} pantalla de {ip}…"})
+        _, ok, msg = cg.lock_screen(ip, _cfg, password, unlock=unlock)
+        publish({"type": "log", "level": "ok" if ok else "err",
+                 "text": f"{'✓' if ok else '✗'} {ip:<15} {msg}"})
+        if ok:
+            publish({"type": "lock", "ip": ip, "locked": (not unlock)})
+
+    threading.Thread(target=worker, daemon=True).start()
+    return jsonify(started=True)
+
+
+def _alive_targets():
+    """Equipos objetivo encendidos (ping previo si está activado)."""
+    targets, _ = cg.build_targets(_cfg)
+    if _cfg.get("ping_first", True):
+        pt = _cfg.get("ping_timeout", 1)
+        if cg.ping_available(pt):
+            return cg.ping_sweep(targets, pt, _cfg.get("ping_workers", 64))
+    return targets
+
+
+def _bulk_precheck(password):
+    """Validaciones y reserva del cerrojo para una acción masiva."""
+    global _bulk_running
+    if _cfg is None:
+        return "config.json no válido", 400
+    if not password:
+        return "falta la contraseña", 400
+    try:
+        targets, _ = cg.build_targets(_cfg)
+    except Exception as exc:  # noqa: BLE001
+        return f"config inválida: {exc}", 400
+    if not targets:
+        return "no hay equipos objetivo", 400
+    with _lock:
+        if _bulk_running:
+            return "ya hay una acción masiva en curso", 409
+        _bulk_running = True
+    return None
+
+
+def _run_bulk(kind, password, text=None, unlock=False):
+    """Aplica una acción por equipo a todos los encendidos, en paralelo."""
+    global _bulk_running
+    import concurrent.futures as cf
+    try:
+        alive = _alive_targets()
+        titles = {"message": "Aviso a todos",
+                  "lock": "Desbloquear todos" if unlock else "Bloquear todos"}
+        publish({"type": "log", "level": "info",
+                 "text": f"▶ {titles[kind]} — {len(alive)} equipo(s) encendido(s)"})
+        if not alive:
+            return
+        workers = min(_cfg.get("parallelism", 20), len(alive)) or 1
+
+        def one(ip):
+            if kind == "message":
+                return cg.send_message(ip, _cfg, password, text)
+            return cg.lock_screen(ip, _cfg, password, unlock=unlock)
+
+        with cf.ThreadPoolExecutor(max_workers=workers) as pool:
+            futs = {pool.submit(one, ip): ip for ip in alive}
+            for fut in cf.as_completed(futs):
+                ip = futs[fut]
+                try:
+                    _, ok, msg = fut.result()
+                except Exception as exc:  # noqa: BLE001
+                    ok, msg = False, str(exc)
+                publish({"type": "log", "level": "ok" if ok else "err",
+                         "text": f"{'✓' if ok else '✗'} {ip:<15} {msg}"})
+                if kind == "lock" and ok:
+                    publish({"type": "lock", "ip": ip, "locked": (not unlock)})
+        publish({"type": "log", "level": "info", "text": f"Fin: {titles[kind]}"})
+    finally:
+        _bulk_running = False
+
+
+@app.route("/api/message_all", methods=["POST"])
+def api_message_all():
+    if not _check_token():
+        return jsonify(error="forbidden"), 403
+    body = request.get_json(force=True, silent=True) or {}
+    text = (body.get("text") or "").strip()
+    password = body.get("password", "")
+    if not text:
+        return jsonify(error="falta el mensaje"), 400
+    err = _bulk_precheck(password)
+    if err:
+        return jsonify(error=err[0]), err[1]
+    threading.Thread(target=_run_bulk, args=("message", password),
+                     kwargs={"text": text}, daemon=True).start()
+    return jsonify(started=True)
+
+
+@app.route("/api/lock_all", methods=["POST"])
+def api_lock_all():
+    if not _check_token():
+        return jsonify(error="forbidden"), 403
+    body = request.get_json(force=True, silent=True) or {}
+    password = body.get("password", "")
+    unlock = bool(body.get("unlock"))
+    err = _bulk_precheck(password)
+    if err:
+        return jsonify(error=err[0]), err[1]
+    threading.Thread(target=_run_bulk, args=("lock", password),
+                     kwargs={"unlock": unlock}, daemon=True).start()
+    return jsonify(started=True)
+
+
+@app.route("/api/screens", methods=["POST"])
+def api_screens():
+    """Captura en paralelo la pantalla de todos los equipos encendidos del aula
+    y las publica una a una para el mural ('Pantallas')."""
+    global _screens_running
+    if not _check_token():
+        return jsonify(error="forbidden"), 403
+    body = request.get_json(force=True, silent=True) or {}
+    password = body.get("password", "")
+    if _cfg is None:
+        return jsonify(error="config.json no válido"), 400
+    if not password:
+        return jsonify(error="falta la contraseña"), 400
+    try:
+        targets, _ = cg.build_targets(_cfg)
+    except Exception as exc:  # noqa: BLE001
+        return jsonify(error=f"config inválida: {exc}"), 400
+    if not targets:
+        return jsonify(error="no hay equipos objetivo"), 400
+    with _lock:
+        if _screens_running:
+            return jsonify(error="ya hay un barrido de pantallas en curso"), 409
+        _screens_running = True
+
+    threading.Thread(target=_run_screens, args=(password, targets),
+                     daemon=True).start()
+    return jsonify(started=True)
+
+
+def _run_screens(password, targets):
+    global _screens_running
+    import concurrent.futures as cf
+    try:
+        alive = targets
+        if _cfg.get("ping_first", True):
+            ptimeout = _cfg.get("ping_timeout", 1)
+            if cg.ping_available(ptimeout):
+                alive = cg.ping_sweep(targets, ptimeout,
+                                      _cfg.get("ping_workers", 64))
+        publish({"type": "screens", "phase": "start", "total": len(alive),
+                 "alive": alive})
+        if not alive:
+            return
+        done = 0
+        workers = min(_cfg.get("parallelism", 20), len(alive)) or 1
+        with cf.ThreadPoolExecutor(max_workers=workers) as pool:
+            futs = {pool.submit(cg.capture_screenshot, ip, _cfg, password,
+                                SHOTS_DIR, f"wall_{ip}.png"): ip
+                    for ip in alive}
+            for fut in cf.as_completed(futs):
+                ip = futs[fut]
+                try:
+                    _, ok, msg, local = fut.result()
+                except Exception as exc:  # noqa: BLE001
+                    ok, local, msg = False, None, str(exc)
+                done += 1
+                if ok and local:
+                    publish({"type": "shot", "src": "wall", "ip": ip,
+                             "file": os.path.basename(local)})
+                else:
+                    publish({"type": "screenfail", "ip": ip, "msg": msg})
+                publish({"type": "screens", "phase": "progress",
+                         "done": done, "total": len(alive)})
+        publish({"type": "screens", "phase": "done",
+                 "done": done, "total": len(alive)})
+    finally:
+        _screens_running = False
+
+
+@app.route("/api/capture")
+def api_capture():
+    # El <img> de la página no puede enviar cabeceras; el token va por query.
+    if request.args.get("t") != TOKEN:
+        return Response("forbidden", status=403)
+    name = request.args.get("file", "")
+    if "/" in name or "\\" in name or ".." in name:
+        return Response("bad request", status=400)
+    return send_from_directory(SHOTS_DIR, name)
 
 
 @app.route("/api/cancel_action", methods=["POST"])
