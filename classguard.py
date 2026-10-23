@@ -42,6 +42,8 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 AGENT_LOCAL = os.path.join(HERE, "agent.sh")
 AGENT_REMOTE = "/tmp/classguard_agent.sh"
 LIST_REMOTE = "/tmp/classguard_domains.txt"
+MSG_REMOTE = "/tmp/classguard_msg.txt"
+SHOT_REMOTE = "/tmp/classguard_shot.png"
 DEFAULT_DATA_FILES = ("config.example.json", "whitelist.txt", "ai-blocklist.txt")
 
 
@@ -181,6 +183,120 @@ def run_on_host(ip, cfg, password, mode, list_path):
         return ip, False, (err or out or f"código {rc}")
     except Exception as exc:
         return ip, False, f"error: {exc}"
+    finally:
+        client.close()
+
+
+def _connect(ip, cfg, password):
+    """Abre una conexión SSH al equipo del alumno (como en run_on_host)."""
+    client = paramiko.SSHClient()
+    client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+    timeout = cfg.get("ssh_timeout", 5)
+    client.connect(
+        ip, username=cfg["ssh_user"], password=password,
+        timeout=timeout, banner_timeout=timeout, auth_timeout=timeout,
+        look_for_keys=False, allow_agent=False,
+    )
+    return client
+
+
+def _run_agent(client, password, argv, timeout=30):
+    """Ejecuta agent.sh con sudo y devuelve (rc, stdout, stderr)."""
+    cmd = f"sudo -S -p '' bash {AGENT_REMOTE} " + argv
+    stdin, stdout, stderr = client.exec_command(cmd, timeout=timeout)
+    stdin.write(password + "\n")
+    stdin.flush()
+    rc = stdout.channel.recv_exit_status()
+    out = stdout.read().decode(errors="replace").strip()
+    err = stderr.read().decode(errors="replace").strip()
+    return rc, out, err
+
+
+def send_message(ip, cfg, password, text):
+    """Muestra un aviso del profesor en el escritorio de un alumno concreto.
+
+    Pensado para equipos del aula gestionados por el centro: avisa de forma
+    visible al alumno (p. ej. que deje de consultar webs no permitidas).
+    Devuelve (ip, ok, mensaje).
+    """
+    try:
+        client = _connect(ip, cfg, password)
+    except Exception as exc:
+        return ip, False, f"sin conexión SSH ({exc.__class__.__name__})"
+    try:
+        sftp = client.open_sftp()
+        sftp.put(AGENT_LOCAL, AGENT_REMOTE)
+        with sftp.open(MSG_REMOTE, "w") as fh:
+            fh.write(text)
+        sftp.close()
+        rc, out, err = _run_agent(client, password, f"message {MSG_REMOTE}")
+        if rc == 0:
+            return ip, True, out or "OK"
+        return ip, False, (err or out or f"código {rc}")
+    except Exception as exc:
+        return ip, False, f"error: {exc}"
+    finally:
+        client.close()
+
+
+def lock_screen(ip, cfg, password, unlock=False):
+    """Bloquea (o desbloquea) la sesión gráfica de un alumno concreto.
+
+    Usa loginctl en el equipo del alumno; lo respetan KDE y GNOME. Útil para
+    detener a un alumno en el momento. Devuelve (ip, ok, mensaje).
+    """
+    try:
+        client = _connect(ip, cfg, password)
+    except Exception as exc:
+        return ip, False, f"sin conexión SSH ({exc.__class__.__name__})"
+    try:
+        sftp = client.open_sftp()
+        sftp.put(AGENT_LOCAL, AGENT_REMOTE)
+        sftp.close()
+        rc, out, err = _run_agent(client, password, "unlock" if unlock else "lock")
+        if rc == 0:
+            return ip, True, out or "OK"
+        return ip, False, (err or out or f"código {rc}")
+    except Exception as exc:
+        return ip, False, f"error: {exc}"
+    finally:
+        client.close()
+
+
+def capture_screenshot(ip, cfg, password, out_dir, filename=None):
+    """Captura el escritorio de un alumno y trae el PNG al equipo del profesor.
+
+    Deja constancia de lo que se ve en pantalla para justificar una medida.
+    Si 'filename' se indica, se guarda con ese nombre (se sobrescribe, útil para
+    el mural de pantallas); si no, se usa un nombre con IP y marca de tiempo.
+    Devuelve (ip, ok, mensaje, ruta_local|None).
+    """
+    try:
+        client = _connect(ip, cfg, password)
+    except Exception as exc:
+        return ip, False, f"sin conexión SSH ({exc.__class__.__name__})", None
+    try:
+        sftp = client.open_sftp()
+        sftp.put(AGENT_LOCAL, AGENT_REMOTE)
+        rc, out, err = _run_agent(client, password, f"screenshot {SHOT_REMOTE}")
+        if rc != 0:
+            sftp.close()
+            return ip, False, (err or out or f"código {rc}"), None
+        os.makedirs(out_dir, exist_ok=True)
+        if filename:
+            local = os.path.join(out_dir, filename)
+        else:
+            stamp = time.strftime("%Y%m%d-%H%M%S")
+            local = os.path.join(out_dir, f"{ip}_{stamp}.png")
+        sftp.get(SHOT_REMOTE, local)
+        try:
+            sftp.remove(SHOT_REMOTE)
+        except Exception:
+            pass
+        sftp.close()
+        return ip, True, out or "OK", local
+    except Exception as exc:
+        return ip, False, f"error: {exc}", None
     finally:
         client.close()
 

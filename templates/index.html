@@ -66,6 +66,25 @@
   .closed p{margin:0;color:var(--muted);}
   .err-banner{background:#fdecea;border:1px solid #f5c6c0;color:#a33;border-radius:8px;
               padding:10px 12px;font-size:14px;margin-bottom:12px;}
+  .tabs{display:flex;gap:6px;margin-bottom:12px;}
+  .tab{background:var(--neutral);color:var(--ink);padding:9px 18px;}
+  .tab:hover:not(.active){background:var(--neutral-hi);}
+  .tab.active{background:var(--ink);color:#fff;}
+  #grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));
+        gap:12px;margin-top:14px;}
+  .tile{border:1px solid var(--border);border-radius:9px;overflow:hidden;
+        background:#fbfcfd;}
+  .tile img{display:block;width:100%;height:150px;object-fit:cover;cursor:pointer;
+            background:#11161d;}
+  .tile.off img{opacity:.35;}
+  .tile .tbar{display:flex;align-items:center;gap:8px;padding:7px 10px;font-size:13px;}
+  .tile .tbar b{font-weight:600;}
+  .tile .tbar .grow{flex:1;}
+  .tile .tbar a{color:var(--muted);text-decoration:none;font-size:16px;line-height:1;}
+  .tile .tbar a:hover{color:var(--ink);}
+  .tile .send{padding:5px 10px;font-size:12px;}
+  .tile.locked{outline:2px solid var(--restrict);outline-offset:-2px;}
+  .tile .lockbadge{color:var(--restrict);font-size:13px;}
 </style>
 </head>
 <body>
@@ -94,6 +113,12 @@
       </div>
     </div>
 
+    <div class="tabs">
+      <button class="tab active" id="tabExamen" onclick="showView('examen')">Examen</button>
+      <button class="tab" id="tabScreens" onclick="showView('screens')">Pantallas</button>
+    </div>
+
+    <div id="viewExamen">
     <div class="card">
       <p class="sec">Acciones del examen</p>
       <div class="actions">
@@ -116,6 +141,38 @@
     <div class="card logcard" id="logCol">
       <p class="sec">Registro</p>
       <div id="log"></div>
+    </div>
+    </div><!-- /viewExamen -->
+
+    <div id="viewScreens" class="hidden">
+      <div class="card">
+        <p class="sec">Pantallas de los alumnos</p>
+        <div class="row">
+          <button class="small b-neutral" id="refreshBtn" onclick="refreshScreens()">Actualizar pantallas</button>
+          <label class="fld"><input type="checkbox" id="autoRef" onchange="toggleAuto()"> auto cada
+            <input type="number" id="autoSec" value="20" min="5" style="width:64px"> s</label>
+          <span id="screensStatus" style="color:var(--muted);margin-left:auto"></span>
+        </div>
+        <div class="row" style="margin-top:10px;">
+          <span class="fld" style="color:var(--muted)">A todos:</span>
+          <button class="small b-restrict" onclick="messageAll()">Avisar</button>
+          <button class="small b-restrict" onclick="lockAll(false)">Bloquear</button>
+          <button class="small b-success" onclick="lockAll(true)">Desbloquear</button>
+        </div>
+        <div class="row" style="margin-top:12px;align-items:stretch;">
+          <textarea id="msgText2" rows="2" style="flex:1;min-width:240px;font:inherit;
+            padding:8px 10px;border:1px solid var(--border);border-radius:7px;resize:vertical;"
+            placeholder="Mensaje que se enviará al pulsar sobre una pantalla…">Recuerda que durante el examen no puedes consultar webs ni recursos no permitidos.</textarea>
+        </div>
+        <p class="info" style="color:var(--muted);font-size:13px;">
+          Pulsa sobre una pantalla para enviar el aviso a ese alumno. «📷» guarda
+          una captura con fecha y hora (constancia); «⤢» abre la imagen a tamaño completo.</p>
+        <div id="grid"></div>
+      </div>
+      <div class="card" id="shotsCard" style="display:none">
+        <p class="sec">Capturas guardadas (constancia)</p>
+        <div id="shots" class="row" style="gap:8px;"></div>
+      </div>
     </div>
 </div>
 </main>
@@ -208,6 +265,163 @@ async function restorePending(){
   await post("/api/restore_pending", {password:pw});
 }
 
+function captureUrl(file){
+  // &v= para evitar la caché del navegador cuando el archivo se sobrescribe.
+  return "/api/capture?file=" + encodeURIComponent(file) +
+         "&t=" + encodeURIComponent(TOKEN) + "&v=" + Date.now();
+}
+
+function addShot(ip, file){
+  $("shotsCard").style.display = "";
+  const url = captureUrl(file);
+  const a = document.createElement("a");
+  a.href = url; a.target = "_blank"; a.title = ip + " — " + file;
+  const img = document.createElement("img");
+  img.src = url; img.alt = ip;
+  img.style.height = "92px"; img.style.border = "1px solid var(--border)";
+  img.style.borderRadius = "6px"; img.style.display = "block";
+  a.appendChild(img);
+  $("shots").prepend(a);
+}
+
+// --- Mural de pantallas ---------------------------------------------------
+let currentView = "examen";
+let autoTimer = null;
+let screensBusy = false;
+
+function showView(v){
+  currentView = v;
+  $("viewExamen").classList.toggle("hidden", v !== "examen");
+  $("viewScreens").classList.toggle("hidden", v !== "screens");
+  $("tabExamen").classList.toggle("active", v === "examen");
+  $("tabScreens").classList.toggle("active", v === "screens");
+  if(v === "screens" && !$("grid").children.length) refreshScreens();
+}
+
+function tile(ip){
+  let t = document.getElementById("tile-" + ip);
+  if(t) return t;
+  t = document.createElement("div");
+  t.className = "tile off"; t.id = "tile-" + ip;
+  const img = document.createElement("img");
+  img.alt = ip; img.title = "Clic: enviar aviso a " + ip;
+  img.onclick = () => sendMessageTo(ip);
+  const bar = document.createElement("div");
+  bar.className = "tbar";
+  bar.innerHTML = '<b>' + ip + '</b><span class="lockbadge"></span><span class="grow"></span>' +
+                  '<button class="send b-restrict" onclick="sendMessageTo(\'' + ip + '\')">Aviso</button>' +
+                  '<a class="lock" style="cursor:pointer" title="Bloquear pantalla">🔒</a>' +
+                  '<a class="shot" title="Guardar captura con fecha/hora" style="cursor:pointer">📷</a>' +
+                  '<a class="full" target="_blank" title="Ver a tamaño completo">⤢</a>';
+  bar.querySelector("a.shot").onclick = () => captureHost(ip);
+  bar.querySelector("a.lock").onclick = () => toggleLock(ip);
+  t.appendChild(img); t.appendChild(bar);
+  $("grid").appendChild(t);
+  return t;
+}
+
+function updateTile(ip, file){
+  const t = tile(ip);
+  t.classList.remove("off");
+  const url = captureUrl(file);
+  t.querySelector("img").src = url;
+  t.querySelector("a.full").href = url;
+}
+
+function markTileOff(ip, msg){
+  const t = tile(ip);
+  t.classList.add("off");
+  t.querySelector("img").title = ip + " — " + (msg || "sin captura");
+}
+
+function screensProgress(m){
+  if(m.phase === "start"){
+    screensBusy = true;
+    $("refreshBtn").disabled = true;
+    $("screensStatus").textContent = m.total ? ("Capturando " + m.total + "…")
+                                             : "No hay equipos encendidos.";
+    // crea las casillas de los encendidos de entrada (en gris hasta tener imagen)
+    (m.alive || []).forEach(tile);
+  } else if(m.phase === "progress"){
+    $("screensStatus").textContent = "Capturando… " + m.done + "/" + m.total;
+  } else if(m.phase === "done"){
+    screensBusy = false;
+    $("refreshBtn").disabled = false;
+    $("screensStatus").textContent = m.done + "/" + m.total + " pantalla(s) · " +
+      new Date().toLocaleTimeString();
+  }
+}
+
+async function refreshScreens(){
+  const pw = $("pw").value;
+  if(!pw){ alert("Escribe la contraseña sudo."); return; }
+  if(screensBusy) return;
+  await post("/api/screens", {password:pw});
+}
+
+function toggleAuto(){
+  if(autoTimer){ clearInterval(autoTimer); autoTimer = null; }
+  if($("autoRef").checked){
+    const secs = Math.max(5, parseInt($("autoSec").value, 10) || 20);
+    autoTimer = setInterval(() => {
+      if(currentView === "screens" && !screensBusy) refreshScreens();
+    }, secs * 1000);
+  }
+}
+
+async function sendMessageTo(ip){
+  const pw = $("pw").value;
+  if(!pw){ alert("Escribe la contraseña sudo."); return; }
+  const text = $("msgText2").value.trim();
+  if(!text){ alert("Escribe el mensaje a enviar."); return; }
+  if(!confirm("Enviar aviso a " + ip + ":\n\n" + text)) return;
+  await post("/api/message", {ip, text, password:pw});
+}
+
+async function captureHost(ip){
+  const pw = $("pw").value;
+  if(!pw){ alert("Escribe la contraseña sudo."); return; }
+  await post("/api/screenshot", {ip, password:pw});
+}
+
+function setLock(ip, locked){
+  const t = tile(ip);
+  t.dataset.locked = locked ? "1" : "";
+  t.classList.toggle("locked", !!locked);
+  const a = t.querySelector("a.lock");
+  if(a){
+    a.textContent = locked ? "🔓" : "🔒";
+    a.title = locked ? "Desbloquear pantalla" : "Bloquear pantalla";
+  }
+  t.querySelector(".lockbadge").textContent = locked ? " 🔒" : "";
+}
+
+async function toggleLock(ip){
+  const pw = $("pw").value;
+  if(!pw){ alert("Escribe la contraseña sudo."); return; }
+  const t = document.getElementById("tile-" + ip);
+  const unlock = !!(t && t.dataset.locked === "1");
+  if(!unlock && !confirm("Bloquear la pantalla de " + ip + "?")) return;
+  await post("/api/lock", {ip, password:pw, unlock});
+}
+
+async function messageAll(){
+  const pw = $("pw").value;
+  if(!pw){ alert("Escribe la contraseña sudo."); return; }
+  const text = $("msgText2").value.trim();
+  if(!text){ alert("Escribe el mensaje a enviar."); return; }
+  if(!confirm("Enviar el aviso a TODOS los equipos encendidos:\n\n" + text)) return;
+  await post("/api/message_all", {text, password:pw});
+}
+
+async function lockAll(unlock){
+  const pw = $("pw").value;
+  if(!pw){ alert("Escribe la contraseña sudo."); return; }
+  const verb = unlock ? "Desbloquear" : "Bloquear";
+  if(!confirm(verb + " la pantalla de TODOS los equipos encendidos. ¿Continuar?")) return;
+  await post("/api/lock_all", {password:pw, unlock});
+}
+
 function cancelAction(){
   $("cancelAction").disabled = true;
   $("status").textContent = "Cancelando…";
@@ -256,6 +470,11 @@ function connect(){
       case "run":      setRunning(m.running); break;
       case "head":     logLine(m.text, "head"); break;
       case "log":      logLine(m.text, m.level); break;
+      case "shot":     (m.src === "wall") ? updateTile(m.ip, m.file)
+                                           : addShot(m.ip, m.file); break;
+      case "screenfail": markTileOff(m.ip, m.msg); break;
+      case "screens":  screensProgress(m); break;
+      case "lock":     setLock(m.ip, m.locked); break;
       case "shutdown": es.close(); showClosed(); break;
     }
   };

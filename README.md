@@ -27,6 +27,13 @@ Tres funciones, más la vuelta atrás:
 | `restore`    | Quita todas las reglas: los equipos vuelven a la normalidad. |
 | `status`     | Muestra el estado de cada equipo. |
 
+Además, **por equipo concreto** (no a toda el aula):
+
+| Acción       | Efecto en el equipo del alumno |
+|--------------|---------------------------------|
+| aviso        | Muestra un **mensaje del profesor** en la pantalla del alumno (p. ej. que deje de consultar un recurso no permitido). |
+| captura      | Hace una **captura del escritorio** del alumno y la trae al equipo del profesor para dejar constancia. |
+
 ## Arquitectura
 
 - `classguard.py` corre **solo en el equipo del profesor**. Recorre el rango de
@@ -56,8 +63,8 @@ programa» en sus propiedades). Si ya está abierto, volver a lanzarlo solo
 muestra la ventana existente en el navegador.
 
 Como el AppImage es de solo lectura, los datos editables se guardan en
-**`~/.config/classguard/`**: `config.json`, `whitelist.txt`, `ai-blocklist.txt`
-y `state.json`. La primera vez se crea con las listas por defecto y
+**`~/.config/classguard/`**: `config.json`, `whitelist.txt`, `ai-blocklist.txt`,
+`state.json` y las capturas en `capturas/`. La primera vez se crea con las listas por defecto y
 `config.example.json`. La configuración se puede cargar desde la propia web con
 «Cargar .json…».
 
@@ -103,6 +110,72 @@ pestaña del navegador no detiene la aplicación.
 la red lo ve) y la API exige un token aleatorio incrustado en la página, de modo
 que ninguna otra web abierta en el navegador puede enviarle peticiones. La
 contraseña `sudo` solo viaja del navegador al servidor local, en memoria.
+
+### Aviso y captura a un equipo concreto
+
+La tarjeta **«Equipo concreto · aviso y captura»** actúa sobre **un solo
+alumno**. Escribe su IP (dentro de la subred del aula) y:
+
+- **Enviar aviso:** muestra un mensaje del profesor en el escritorio del alumno.
+  Usa `zenity` (un diálogo que el alumno debe cerrar) o, si no está, una
+  notificación `notify-send`. Útil para avisar en el momento de que deje de
+  consultar un recurso no permitido.
+- **Capturar pantalla:** toma una captura del escritorio del alumno y la trae al
+  equipo del profesor, donde queda guardada en `capturas/` (dentro de la carpeta
+  de datos) con el nombre `IP_fecha-hora.png`. Las miniaturas aparecen en la
+  tarjeta; al pulsarlas se abren a tamaño completo. Sirve para **dejar
+  constancia** de lo que había en pantalla y justificar cualquier medida.
+
+ClassGuard **detecta el escritorio** de cada alumno (KDE/Plasma o GNOME) y usa
+la herramienta adecuada:
+
+- **Captura:** `spectacle` en KDE, `gnome-screenshot` en GNOME (ambos funcionan
+  en X11 y Wayland). Como respaldo prueba `grim` (Wayland wlroots) y
+  `scrot`/`import` (X11).
+- **Aviso:** `kdialog` en KDE, `zenity` en GNOME y, si no hay ninguno, una
+  notificación `notify-send`.
+
+Esas utilidades vienen de serie en la mayoría de instalaciones de escritorio,
+pero conviene confirmarlo en un equipo del aula antes del examen.
+
+### Mural de pantallas
+
+La pestaña **«Pantallas»** muestra una rejilla con la pantalla de cada alumno
+**encendido** (se capturan en paralelo, omitiendo los apagados). Desde ahí:
+
+- **Pulsa sobre una pantalla** para enviar el aviso a ese alumno directamente,
+  sin teclear la IP (el texto es el del recuadro superior; se pide confirmación).
+- **«🔒»** bloquea la pantalla del alumno (vuelve a pulsarlo —ya como «🔓»— para
+  desbloquearla). La tarjeta se marca en rojo mientras está bloqueada. Ver
+  «[Cómo funciona el bloqueo](#cómo-funciona-el-bloqueo)» más abajo.
+- **«📷»** guarda una captura con fecha y hora (constancia).
+- **«⤢»** abre esa captura a tamaño completo.
+
+La fila **«A todos»** aplica estas acciones a **todos los equipos encendidos** a
+la vez (en paralelo): **Avisar** (con el texto del recuadro), **Bloquear** y
+**Desbloquear**. Cada una pide confirmación.
+
+#### Cómo funciona el bloqueo
+
+- **En X11 el bloqueo es fuerte:** el agente (como root) **deshabilita el teclado
+  y el ratón** del alumno con `xinput` y muestra un aviso. Como el alumno no tiene
+  `sudo`, **no puede reactivarlos**; solo el profesor los reactiva con
+  «Desbloquear». `xinput` viene de serie en el escritorio de Ubuntu/Kubuntu.
+- **En Wayland (o si no hay `xinput`) el bloqueo es débil:** Wayland impide por
+  seguridad que un programa capture la entrada de otra sesión, así que se recurre
+  al bloqueo de sesión de `logind`, que el alumno **puede** quitar con su propia
+  contraseña. El agente lo indica en el registro como `lock DEBIL`.
+- En ningún caso es infranqueable: con acceso físico el alumno puede cambiar de
+  terminal virtual (Ctrl+Alt+F3) o reiniciar. Es para detenerle en el momento,
+  no una barrera total (para eso, el control va en el router del aula).
+- **«Actualizar pantallas»** rehace el barrido; marca **«auto cada N s»** para
+  refrescarlo solo. Las imágenes del mural se sobrescriben por equipo
+  (`wall_<IP>.png`), así que no acumulan archivos; las capturas de la pestaña
+  «Examen» sí se guardan con fecha y hora para dejar constancia.
+
+> Como el resto de ClassGuard, es una función de administración de equipos
+> gestionados por el centro. Úsala de forma transparente y conforme a la política
+> del centro sobre el uso de los equipos del aula durante los exámenes.
 
 ## Uso por terminal
 
@@ -172,6 +245,10 @@ restaurar (apagados, etc.):
   **router/cortafuegos del aula**, no en cada equipo.
 - `blockai` bloquea por lista de dominios conocidos; amplíala según necesites.
   No detecta IA accedida por IP cruda ni servicios no listados.
+- El **bloqueo de pantalla** es fuerte en X11 (se deshabilitan teclado y ratón
+  como root; el alumno sin `sudo` no los reactiva) y débil en Wayland (bloqueo de
+  sesión, que el alumno quita con su contraseña). En ningún caso impide cambiar de
+  terminal virtual o reiniciar. Ver «[Cómo funciona el bloqueo](#cómo-funciona-el-bloqueo)».
 
 ## Recomendación
 
