@@ -132,6 +132,16 @@
       </div>
     </div>
 
+    <div class="card">
+      <p class="sec">Mantenimiento</p>
+      <div class="actions">
+        <button class="b-neutral" onclick="action('update')">Actualizar equipos</button>
+      </div>
+      <p class="info" style="color:var(--muted);font-size:13px;">
+        Instala las actualizaciones del sistema (apt) en los equipos encendidos.
+        Necesitan internet: no se actualiza un equipo con el examen sin restaurar.</p>
+    </div>
+
     <div class="card pending hidden" id="pendingCard">
       <div class="row">
         <span class="txt" id="pendingTxt"></span>
@@ -259,6 +269,9 @@ async function action(mode){
   if(blocking){
     if(!confirm(`Acción: ${mode}.\n¿Continuar?`)) return;
   }
+  if(mode === "update" && !confirm(
+      "Actualizar el sistema de todos los equipos encendidos del aula.\n" +
+      "Puede tardar varios minutos y consumir bastante ancho de banda. ¿Continuar?")) return;
   await post("/api/action", {mode, password:pw});
 }
 

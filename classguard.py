@@ -15,6 +15,7 @@ Acciones:
   blockai    Internet normal, pero bloquea los dominios de ai-blocklist.txt.
   restore    Quita todas las reglas y devuelve los equipos a la normalidad.
   status     Muestra el estado de cada equipo.
+  update     Actualiza el sistema (apt) de los equipos de alumno.
 
 Uso:
   python3 classguard.py <accion> [--config config.json]
@@ -248,10 +249,12 @@ def run_on_host(ip, cfg, password, mode, list_path):
         elif mode == "blockall":
             cmd = (f"sudo -S -p '' bash {AGENT_REMOTE} blockall "
                    f"{lan_cidr} {teacher_ip}")
-        else:  # restore / status
+        else:  # restore / status / update
             cmd = f"sudo -S -p '' bash {AGENT_REMOTE} {mode}"
 
-        stdin, stdout, stderr = client.exec_command(cmd, timeout=30)
+        # Actualizar descarga e instala paquetes: puede tardar muchos minutos.
+        run_timeout = cfg.get("update_timeout", 1800) if mode == "update" else 30
+        stdin, stdout, stderr = client.exec_command(cmd, timeout=run_timeout)
         stdin.write(password + "\n")
         stdin.flush()
         rc = stdout.channel.recv_exit_status()
@@ -402,8 +405,8 @@ def capture_screenshot(ip, cfg, password, out_dir, filename=None):
 
 def max_attempts_for(cfg, mode):
     """Nº total de intentos (1 inicial + reintentos) según el modo."""
-    if mode == "status":
-        return 1          # consultar estado no reintenta (equipos apagados)
+    if mode in ("status", "update"):
+        return 1          # consultar estado o actualizar no reintenta
     base = cfg.get("retries", 2)
     if mode == "restore":
         base = cfg.get("restore_retries", base)
@@ -549,7 +552,7 @@ def main():
     parser = argparse.ArgumentParser(description="Control de red del aula")
     parser.add_argument("action",
                         choices=["blockall", "whitelist", "blockai",
-                                 "restore", "status"])
+                                 "restore", "status", "update"])
     parser.add_argument("--config", default=os.path.join(DATA, "config.json"))
     args = parser.parse_args()
 

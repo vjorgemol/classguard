@@ -43,6 +43,7 @@ LABELS = {
     "blockai":   "Bloquear IA",
     "restore":   "Restaurar examen",
     "status":    "Ver estado",
+    "update":    "Actualizar equipos",
 }
 
 app = Flask(__name__, template_folder=os.path.join(HERE, "templates"))
