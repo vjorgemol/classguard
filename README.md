@@ -114,18 +114,19 @@ contraseña `sudo` solo viaja del navegador al servidor local, en memoria.
 
 ### Aviso y captura a un equipo concreto
 
-La tarjeta **«Equipo concreto · aviso y captura»** actúa sobre **un solo
-alumno**. Escribe su IP (dentro de la subred del aula) y:
+Se hacen desde la tarjeta de cada alumno en el mural de la pestaña
+**«Pantallas»** (ver más abajo):
 
-- **Enviar aviso:** muestra un mensaje del profesor en el escritorio del alumno.
-  Usa `zenity` (un diálogo que el alumno debe cerrar) o, si no está, una
-  notificación `notify-send`. Útil para avisar en el momento de que deje de
-  consultar un recurso no permitido.
-- **Capturar pantalla:** toma una captura del escritorio del alumno y la trae al
+- **Aviso:** muestra un mensaje del profesor en el escritorio del alumno (un
+  diálogo que el alumno debe cerrar o, si no es posible, una notificación).
+  Útil para avisar en el momento de que deje de consultar un recurso no
+  permitido.
+- **Captura («📷»):** toma una captura del escritorio del alumno y la trae al
   equipo del profesor, donde queda guardada en `capturas/` (dentro de la carpeta
   de datos) con el nombre `IP_fecha-hora.png`. Las miniaturas aparecen en la
-  tarjeta; al pulsarlas se abren a tamaño completo. Sirve para **dejar
-  constancia** de lo que había en pantalla y justificar cualquier medida.
+  tarjeta «Capturas guardadas»; al pulsarlas se abren a tamaño completo. Sirve
+  para **dejar constancia** de lo que había en pantalla y justificar cualquier
+  medida.
 
 ClassGuard **detecta el escritorio** de cada alumno (KDE/Plasma o GNOME) y usa
 la herramienta adecuada:
