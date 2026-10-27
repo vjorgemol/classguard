@@ -14,6 +14,7 @@
 #   sudo bash agent.sh lock
 #   sudo bash agent.sh unlock
 #   sudo bash agent.sh poweroff
+#   sudo bash agent.sh update
 #
 # Toda la configuración vive en una tabla nftables propia ("classguard"),
 # de modo que no interfiere con otras reglas y se puede borrar por completo.
@@ -447,6 +448,46 @@ do_poweroff() {
   echo "OK apagando"
 }
 
+# ---------------------------------------------------------------------------
+# ACCIÓN: actualizar el sistema del alumno (apt). Necesita internet, así que
+# se niega si hay reglas de ClassGuard activas. Usa 'upgrade --with-new-pkgs'
+# (instala nuevas dependencias, p. ej. kernels, pero nunca desinstala nada) y
+# conserva los ficheros de configuración locales. La salida completa de apt
+# queda en /var/log/classguard-update.log; aquí solo se devuelve un resumen.
+# ---------------------------------------------------------------------------
+do_update() {
+  local log="/var/log/classguard-update.log" out
+  if nft list table inet "$TABLE" >/dev/null 2>&1; then
+    echo "hay reglas de ClassGuard activas (sin internet): restaura el examen antes de actualizar" >&2; exit 6
+  fi
+  command -v apt-get >/dev/null 2>&1 || { echo "apt-get no disponible" >&2; exit 7; }
+
+  export DEBIAN_FRONTEND=noninteractive LC_ALL=C
+  local opts=(-y -q -o DPkg::Lock::Timeout=300
+              -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold)
+  echo "=== $(date '+%F %T') actualización lanzada por ClassGuard ===" >> "$log"
+
+  if ! apt-get "${opts[@]}" update >> "$log" 2>&1; then
+    echo "falló apt-get update: $(tail -n 2 "$log" | tr '\n' ' ') (ver $log)" >&2; exit 8
+  fi
+  dpkg --configure -a >> "$log" 2>&1 || true   # por si quedó una instalación a medias
+  local rc=0
+  out="$(apt-get "${opts[@]}" upgrade --with-new-pkgs 2>&1)" || rc=$?
+  echo "$out" >> "$log"
+  if [ "$rc" -ne 0 ]; then
+    echo "falló apt-get upgrade: $(echo "$out" | tail -n 2 | tr '\n' ' ') (ver $log)" >&2; exit 9
+  fi
+
+  # Línea resumen de apt: "N upgraded, M newly installed, K to remove and H not upgraded."
+  local up="" new="" held=""
+  read -r up new held < <(echo "$out" | sed -n \
+    's/^\([0-9]\+\) upgraded, \([0-9]\+\) newly installed.* \([0-9]\+\) not upgraded.*/\1 \2 \3/p' | tail -1) || true
+  local msg="OK actualizado: ${up:-0} paquete(s) actualizado(s), ${new:-0} nuevo(s)"
+  [ "${held:-0}" -gt 0 ] && msg="$msg, $held retenido(s)"
+  [ -f /var/run/reboot-required ] && msg="$msg — requiere reiniciar"
+  echo "$msg"
+}
+
 require_root
 case "$MODE" in
   blockall)   apply_blockall  ;;
@@ -459,5 +500,6 @@ case "$MODE" in
   lock)       do_lock lock ;;
   unlock)     do_lock unlock ;;
   poweroff)   do_poweroff ;;
+  update)     do_update ;;
   *) echo "Modo desconocido: $MODE" >&2; exit 2 ;;
 esac

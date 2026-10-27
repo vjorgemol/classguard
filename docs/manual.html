@@ -306,7 +306,7 @@ cp config.example.json config.json</code></pre>
     <h2>6. La interfaz web</h2>
     <figure>
       <div class="mock" role="img" aria-label="Maqueta de la ventana de ClassGuard con sus cinco zonas numeradas">
-        <div class="mh">ClassGuard<span>Control de red del aula durante exámenes</span></div>
+        <div class="mh">ClassGuard<span>Control de red del aula durante exámenes y gestión del aula</span></div>
         <div class="mb">
           <div class="mcard"><span class="pin">1</span>
             <div class="msec">Configuración</div>
@@ -351,8 +351,14 @@ cp config.example.json config.json</code></pre>
         detiene la acción en curso cuanto antes, sin esperar a los reintentos. <span class="btn n">Salir</span> cierra ClassGuard
         (avisa si quedan equipos bloqueados).</span></li>
     </ul>
-    <p>Arriba de las acciones hay dos pestañas: <b>«Examen»</b> (la que ves en la maqueta) y <b>«Pantallas»</b>,
-      que se explica en el apartado siguiente.</p>
+    <p>La pestaña <b>«Mantenimiento»</b> tiene el botón
+      <span class="btn n">Actualizar equipos</span>: instala las actualizaciones del sistema (<code>apt</code>) en todos
+      los equipos encendidos. Hazlo fuera del examen: un equipo con el bloqueo activo no tiene internet y se salta
+      (restaura antes). Puede tardar varios minutos; el registro indica cuántos paquetes se actualizaron en cada equipo
+      y si <b>requiere reiniciar</b>. La salida completa queda en <code>/var/log/classguard-update.log</code> de cada alumno.</p>
+    <p>Arriba de las acciones hay tres pestañas: <b>«Examen»</b> (la que ves en la maqueta), <b>«Pantallas»</b>,
+      que se explica en el apartado siguiente, y <b>«Mantenimiento»</b>, descrita en el párrafo anterior. El registro se
+      ve en «Examen» y en «Mantenimiento».</p>
     <div class="note"><p><b>Seguridad:</b> la página solo es accesible desde tu propio equipo (<code>127.0.0.1</code>); nadie
       más en la red la ve. La contraseña no se guarda en disco.</p></div>
   </section>
@@ -524,7 +530,8 @@ cp config.example.json config.json</code></pre>
 python3 classguard.py whitelist    # solo dominios de whitelist.txt
 python3 classguard.py blockai      # bloquear IA
 python3 classguard.py status       # ver estado
-python3 classguard.py restore      # volver a la normalidad</code></pre>
+python3 classguard.py restore      # volver a la normalidad
+python3 classguard.py update       # actualizar el sistema (apt)</code></pre>
     <p>Te pedirá una vez la contraseña <code>sudo</code>. Para usar otro fichero de configuración añade
       <code>--config otra_aula.json</code>.</p>
     <p>Opciones de la interfaz web: <code>--port 9000</code> cambia el puerto y <code>--no-open</code> evita que se

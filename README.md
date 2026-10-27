@@ -1,4 +1,4 @@
-# ClassGuard — control de red del aula durante exámenes
+# ClassGuard — control de red del aula durante exámenes y gestión del aula
 
 Herramienta para que el **profesor**, desde su equipo, controle el acceso a la
 red de los equipos de los **alumnos** del aula durante un examen. Pensada para
@@ -26,6 +26,7 @@ Tres funciones, más la vuelta atrás:
 | `blockai`    | Internet normal, pero **bloquea** los dominios de IA de `ai-blocklist.txt`. |
 | `restore`    | Quita todas las reglas: los equipos vuelven a la normalidad. |
 | `status`     | Muestra el estado de cada equipo. |
+| `update`     | **Actualiza el sistema** (`apt`) de los equipos encendidos. Botón «Actualizar equipos» en la pestaña «Mantenimiento» de la interfaz web. |
 
 Además, **por equipo concreto** (no a toda el aula):
 
@@ -206,7 +207,16 @@ python3 classguard.py whitelist    # solo dominios de whitelist.txt
 python3 classguard.py blockai      # bloquea IA (ai-blocklist.txt)
 python3 classguard.py status       # ver estado
 python3 classguard.py restore      # volver a la normalidad  ← al terminar el examen
+python3 classguard.py update       # actualizar el sistema de los alumnos (apt)
 ```
+
+`update` ejecuta en cada alumno `apt-get update` y `apt-get upgrade
+--with-new-pkgs` (instala dependencias nuevas, como kernels, pero nunca
+desinstala paquetes; conserva los ficheros de configuración locales). Necesita
+internet, así que se niega en los equipos con reglas de ClassGuard activas:
+restaura antes. No se reintenta; el registro indica cuántos paquetes se
+actualizaron y si el equipo **requiere reiniciar**. La salida completa de apt
+queda en `/var/log/classguard-update.log` de cada alumno.
 
 Al lanzarlo te pedirá **una vez** la contraseña `sudo` del usuario (la misma
 para SSH y para `sudo` en los alumnos). No se guarda en disco ni aparece en la
@@ -229,6 +239,8 @@ lista de procesos de los equipos de alumno (se pasa por stdin a `sudo -S`).
 - `restore_retries`: reintentos al restaurar (por defecto 5; los equipos que
   tardan en encenderse acaban limpiándose solos).
 - `retry_delay`: segundos de espera entre rondas de reintento (por defecto 15).
+- `update_timeout`: segundos máximos de espera por equipo al actualizar
+  (por defecto 1800).
 
 ## Reintento automático
 
