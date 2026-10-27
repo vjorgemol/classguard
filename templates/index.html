@@ -118,6 +118,7 @@
     <div class="tabs">
       <button class="tab active" id="tabExamen" onclick="showView('examen')">Examen</button>
       <button class="tab" id="tabScreens" onclick="showView('screens')">Pantallas</button>
+      <button class="tab" id="tabMaint" onclick="showView('maint')">Mantenimiento</button>
     </div>
 
     <div id="viewExamen">
@@ -132,16 +133,6 @@
       </div>
     </div>
 
-    <div class="card">
-      <p class="sec">Mantenimiento</p>
-      <div class="actions">
-        <button class="b-neutral" onclick="action('update')">Actualizar equipos</button>
-      </div>
-      <p class="info" style="color:var(--muted);font-size:13px;">
-        Instala las actualizaciones del sistema (apt) en los equipos encendidos.
-        Necesitan internet: no se actualiza un equipo con el examen sin restaurar.</p>
-    </div>
-
     <div class="card pending hidden" id="pendingCard">
       <div class="row">
         <span class="txt" id="pendingTxt"></span>
@@ -149,12 +140,25 @@
       </div>
     </div>
 
-    <!-- Registro, siempre visible debajo de los controles -->
+    </div><!-- /viewExamen -->
+
+    <div id="viewMaint" class="hidden">
+    <div class="card">
+      <p class="sec">Mantenimiento de los equipos</p>
+      <div class="actions">
+        <button class="b-neutral" onclick="action('update')">Actualizar equipos</button>
+      </div>
+      <p class="info" style="color:var(--muted);font-size:13px;">
+        Instala las actualizaciones del sistema (apt) en los equipos encendidos.
+        Necesitan internet: no se actualiza un equipo con el examen sin restaurar.</p>
+    </div>
+    </div><!-- /viewMaint -->
+
+    <!-- Registro, debajo de los controles en «Examen» y «Mantenimiento» -->
     <div class="card logcard" id="logCol">
       <p class="sec">Registro</p>
       <div id="log"></div>
     </div>
-    </div><!-- /viewExamen -->
 
     <div id="viewScreens" class="hidden">
       <div class="card">
@@ -310,8 +314,11 @@ function showView(v){
   currentView = v;
   $("viewExamen").classList.toggle("hidden", v !== "examen");
   $("viewScreens").classList.toggle("hidden", v !== "screens");
+  $("viewMaint").classList.toggle("hidden", v !== "maint");
+  $("logCol").classList.toggle("hidden", v === "screens");
   $("tabExamen").classList.toggle("active", v === "examen");
   $("tabScreens").classList.toggle("active", v === "screens");
+  $("tabMaint").classList.toggle("active", v === "maint");
   if(v === "screens" && !$("grid").children.length) refreshScreens();
 }
 
