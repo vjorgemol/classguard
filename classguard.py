@@ -549,7 +549,7 @@ def drive_action(cfg, password, mode, list_path, targets, emit, note=None,
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Control de red del aula")
+    parser = argparse.ArgumentParser(description="Control de red y gestión del aula")
     parser.add_argument("action",
                         choices=["blockall", "whitelist", "blockai",
                                  "restore", "status", "update"])

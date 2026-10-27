@@ -1,4 +1,4 @@
-# ClassGuard — control de red del aula durante exámenes
+# ClassGuard — control de red del aula durante exámenes y gestión del aula
 
 Herramienta para que el **profesor**, desde su equipo, controle el acceso a la
 red de los equipos de los **alumnos** del aula durante un examen. Pensada para
@@ -26,7 +26,7 @@ Tres funciones, más la vuelta atrás:
 | `blockai`    | Internet normal, pero **bloquea** los dominios de IA de `ai-blocklist.txt`. |
 | `restore`    | Quita todas las reglas: los equipos vuelven a la normalidad. |
 | `status`     | Muestra el estado de cada equipo. |
-| `update`     | **Actualiza el sistema** (`apt`) de los equipos encendidos. Botón «Actualizar equipos» en la interfaz web. |
+| `update`     | **Actualiza el sistema** (`apt`) de los equipos encendidos. Botón «Actualizar equipos» en la pestaña «Mantenimiento» de la interfaz web. |
 
 Además, **por equipo concreto** (no a toda el aula):
 
