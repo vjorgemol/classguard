@@ -151,7 +151,7 @@
 <header>
   <div class="in">
     <h1>Manual de uso de ClassGuard</h1>
-    <p>Control de la red del aula durante los exámenes · guía para el profesorado</p>
+    <p>Control de la red del aula durante los exámenes y gestión del aula · guía para el profesorado</p>
   </div>
 </header>
 
@@ -166,6 +166,7 @@
       <li><a href="#examen">El día del examen, paso a paso</a></li>
       <li><a href="#interfaz">La interfaz web</a></li>
       <li><a href="#pantallas">Pestaña «Pantallas»</a></li>
+      <li><a href="#mantenimiento">Pestaña «Mantenimiento»</a></li>
       <li><a href="#modos">Los modos de bloqueo</a></li>
       <li><a href="#registro">Cómo leer el registro</a></li>
       <li><a href="#pendientes">Equipos pendientes de restaurar</a></li>
@@ -185,7 +186,8 @@
       no necesitan tener nada instalado.</p>
     <p>Además, desde la pestaña <b>«Pantallas»</b> puedes ver la pantalla de cada alumno, enviarle un aviso, guardar
       una captura como constancia o bloquear su teclado y ratón, y también encender o apagar todos los equipos del
-      aula (apartado 7).</p>
+      aula (apartado 7). Y desde la pestaña <b>«Mantenimiento»</b> puedes instalar las actualizaciones del sistema en
+      todos los equipos a la vez (apartado 8).</p>
     <div class="note"><p><b>Tu equipo nunca se toca.</b> ClassGuard detecta las IPs del ordenador del profesor y
       las excluye automáticamente. La red local del aula también se mantiene, para poder seguir gestionando los
       equipos mientras están bloqueados.</p></div>
@@ -259,9 +261,10 @@ cp config.example.json config.json</code></pre>
         <tr><td><code>retries</code></td><td>Reintentos sobre los equipos que fallan (por defecto 2).</td></tr>
         <tr><td><code>restore_retries</code></td><td>Reintentos al restaurar (por defecto 5).</td></tr>
         <tr><td><code>retry_delay</code></td><td>Segundos de espera entre reintentos (por defecto 15).</td></tr>
+        <tr><td><code>update_timeout</code></td><td>Segundos máximos de espera por equipo al actualizar (por defecto 1800, media hora; apartado 8).</td></tr>
         <tr><td><code>macs</code></td><td>Opcional. Direcciones MAC para encender equipos por Wake-on-LAN, p. ej.
           <code>{"192.168.1.23": "aa:bb:cc:dd:ee:ff"}</code>. Normalmente no hace falta: ClassGuard las aprende solo (apartado 7).</td></tr>
-        <tr><td><code>whitelist_file</code>, <code>ai_blocklist_file</code></td><td>Ficheros con las listas de dominios (ver apartado 12).</td></tr>
+        <tr><td><code>whitelist_file</code>, <code>ai_blocklist_file</code></td><td>Ficheros con las listas de dominios (ver apartado 13).</td></tr>
       </tbody>
     </table>
     </div>
@@ -315,7 +318,7 @@ cp config.example.json config.json</code></pre>
             <div class="mrow" style="margin-top:8px"><b>Aula:</b> 192.168.1.0/24 | <b>equipos:</b> 28 / 30 encendidos</div>
             <div class="mrow" style="margin-top:8px">Contraseña sudo: <span class="mfield">••••••••</span> ☐ ver</div>
           </div>
-          <div class="mtabs"><span class="on">Examen</span><span>Pantallas</span></div>
+          <div class="mtabs"><span class="on">Examen</span><span>Pantallas</span><span>Mantenimiento</span></div>
           <div class="mcard"><span class="pin">2</span>
             <div class="msec">Acciones del examen</div>
             <div class="mgrid">
@@ -344,21 +347,15 @@ cp config.example.json config.json</code></pre>
       <li><span class="pin">2</span><span><b>Acciones del examen</b> (pestaña «Examen»): los tres modos de bloqueo (rojo), restaurar (verde) y ver estado.
         Se desactivan mientras hay una operación en curso.</span></li>
       <li><span class="pin">3</span><span><b>Aviso de pendientes:</b> solo aparece si quedaron equipos sin restaurar de una sesión
-        anterior (ver apartado 10).</span></li>
+        anterior (ver apartado 11).</span></li>
       <li><span class="pin">4</span><span><b>Registro:</b> resultado en vivo, equipo por equipo. También recoge el
         resultado de los avisos, capturas y bloqueos que hagas desde «Pantallas».</span></li>
       <li><span class="pin">5</span><span><b>Barra de estado:</b> indica «Trabajando…» o «Listo.». <span class="btn r">Cancelar operación</span>
         detiene la acción en curso cuanto antes, sin esperar a los reintentos. <span class="btn n">Salir</span> cierra ClassGuard
         (avisa si quedan equipos bloqueados).</span></li>
     </ul>
-    <p>La pestaña <b>«Mantenimiento»</b> tiene el botón
-      <span class="btn n">Actualizar equipos</span>: instala las actualizaciones del sistema (<code>apt</code>) en todos
-      los equipos encendidos. Hazlo fuera del examen: un equipo con el bloqueo activo no tiene internet y se salta
-      (restaura antes). Puede tardar varios minutos; el registro indica cuántos paquetes se actualizaron en cada equipo
-      y si <b>requiere reiniciar</b>. La salida completa queda en <code>/var/log/classguard-update.log</code> de cada alumno.</p>
-    <p>Arriba de las acciones hay tres pestañas: <b>«Examen»</b> (la que ves en la maqueta), <b>«Pantallas»</b>,
-      que se explica en el apartado siguiente, y <b>«Mantenimiento»</b>, descrita en el párrafo anterior. El registro se
-      ve en «Examen» y en «Mantenimiento».</p>
+    <p>Arriba de las acciones hay tres pestañas: <b>«Examen»</b> (la que ves en la maqueta), <b>«Pantallas»</b>
+      (apartado 7) y <b>«Mantenimiento»</b> (apartado 8). El registro se ve en «Examen» y en «Mantenimiento».</p>
     <div class="note"><p><b>Seguridad:</b> la página solo es accesible desde tu propio equipo (<code>127.0.0.1</code>); nadie
       más en la red la ve. La contraseña no se guarda en disco.</p></div>
   </section>
@@ -370,7 +367,7 @@ cp config.example.json config.json</code></pre>
     <figure>
       <div class="mock" role="img" aria-label="Maqueta de la pestaña Pantallas con el mural de equipos">
         <div class="mb">
-          <div class="mtabs"><span>Examen</span><span class="on">Pantallas</span></div>
+          <div class="mtabs"><span>Examen</span><span class="on">Pantallas</span><span>Mantenimiento</span></div>
           <div class="mcard">
             <div class="msec">Pantallas de los alumnos</div>
             <div class="mrow"><span class="btn n">Actualizar pantallas</span> ☐ auto cada <span class="mfield" style="min-width:36px">20</span> s
@@ -471,8 +468,56 @@ cp config.example.json config.json</code></pre>
       por el centro. Úsalas de forma transparente y conforme a la política del centro durante los exámenes.</p></div>
   </section>
 
+  <section id="mantenimiento">
+    <h2>8. Pestaña «Mantenimiento»</h2>
+    <p>Reúne las tareas de cuidado de los equipos del aula, que no tienen que ver con el examen. De momento tiene
+      una: <span class="btn n">Actualizar equipos</span>, que instala las actualizaciones del sistema en todos los
+      equipos de alumno encendidos a la vez. Necesita la contraseña <code>sudo</code> escrita arriba.</p>
+    <figure>
+      <div class="mock" role="img" aria-label="Maqueta de la pestaña Mantenimiento con el botón Actualizar equipos y el registro">
+        <div class="mb">
+          <div class="mtabs"><span>Examen</span><span>Pantallas</span><span class="on">Mantenimiento</span></div>
+          <div class="mcard">
+            <div class="msec">Mantenimiento de los equipos</div>
+            <div class="mrow"><span class="btn n">Actualizar equipos</span></div>
+          </div>
+          <div class="mcard">
+            <div class="msec">Registro</div>
+<div class="mlog"><span class="hd">▶ Actualizar equipos — 30 equipos</span>
+<span class="inf">↻ 28 encendido(s); 2 apagado(s), omitidos.</span>
+<span class="ok">✓ 192.168.1.101   OK actualizado: 12 paquete(s) actualizado(s), 1 nuevo(s) — requiere reiniciar</span>
+<span class="ok">✓ 192.168.1.102   OK actualizado: 0 paquete(s) actualizado(s), 0 nuevo(s)</span>
+<span class="err">✗ 192.168.1.107   hay reglas de ClassGuard activas (sin internet): restaura el examen antes de actualizar</span></div>
+          </div>
+        </div>
+      </div>
+      <figcaption>Maqueta orientativa. Los textos exactos del registro pueden variar.</figcaption>
+    </figure>
+    <h3>Qué hace</h3>
+    <ul>
+      <li>En cada equipo encendido descarga la lista de paquetes e instala las actualizaciones disponibles
+        (<code>apt-get update</code> y <code>apt-get upgrade --with-new-pkgs</code>), sin preguntar nada.</li>
+      <li>Instala las dependencias nuevas que hagan falta (por ejemplo, un kernel nuevo), pero <b>nunca desinstala</b>
+        paquetes, y conserva los ficheros de configuración que el centro haya modificado.</li>
+      <li>Si otro programa está instalando paquetes en ese momento (por ejemplo, las actualizaciones automáticas de
+        Ubuntu), espera hasta 5 minutos a que termine.</li>
+      <li>Los equipos se actualizan en paralelo y <b>no se reintenta</b>: si uno falla, repite la acción más tarde.
+        «Cancelar operación» deja de esperar, pero los equipos que ya estaban actualizando terminan por su cuenta.</li>
+    </ul>
+    <h3>El resultado en el registro</h3>
+    <p>Cada equipo muestra cuántos paquetes se han <b>actualizado</b>, cuántos <b>nuevos</b> se han instalado y, si los
+      hay, cuántos han quedado <b>retenidos</b>. Si aparece <b>«requiere reiniciar»</b>, la actualización (normalmente
+      del kernel) no se aplica del todo hasta reiniciar el equipo: puedes apagar el aula desde «Pantallas» y volver a
+      encenderla. La salida completa de cada actualización queda en <code>/var/log/classguard-update.log</code> en el
+      equipo del alumno.</p>
+    <div class="warn"><p><b class="t">Importante:</b> actualiza <b>fuera del examen</b>. Los equipos necesitan internet,
+      así que un equipo con un modo de bloqueo activo no se actualiza: aparece con ✗ y el aviso
+      <i>«hay reglas de ClassGuard activas»</i>. Pulsa antes <span class="btn g">Restaurar examen</span>. Ten en cuenta
+      también que actualizar toda el aula a la vez puede tardar varios minutos y ocupar bastante ancho de banda.</p></div>
+  </section>
+
   <section id="modos">
-    <h2>8. Los modos de bloqueo</h2>
+    <h2>9. Los modos de bloqueo</h2>
     <div class="tablewrap">
     <table>
       <thead><tr><th>Botón</th><th>Qué hace en los equipos de alumno</th><th>Cuándo usarlo</th></tr></thead>
@@ -494,7 +539,7 @@ cp config.example.json config.json</code></pre>
   </section>
 
   <section id="registro">
-    <h2>9. Cómo leer el registro</h2>
+    <h2>10. Cómo leer el registro</h2>
     <div class="tablewrap">
     <table>
       <thead><tr><th>Símbolo</th><th>Significado</th></tr></thead>
@@ -514,7 +559,7 @@ cp config.example.json config.json</code></pre>
   </section>
 
   <section id="pendientes">
-    <h2>10. Equipos pendientes de restaurar</h2>
+    <h2>11. Equipos pendientes de restaurar</h2>
     <p>ClassGuard recuerda qué equipos tienen un bloqueo aplicado. Si cierras la aplicación y alguno quedó sin
       restaurar (por ejemplo, porque estaba apagado), al volver a abrirla verás un aviso amarillo:</p>
     <div class="mcard pend" style="margin:10px 0">⚠ 2 equipo(s) de un examen anterior sin restaurar: 192.168.1.112, 192.168.1.118</div>
@@ -523,7 +568,7 @@ cp config.example.json config.json</code></pre>
   </section>
 
   <section id="terminal">
-    <h2>11. Uso desde la terminal</h2>
+    <h2>12. Uso desde la terminal</h2>
     <p>Si prefieres no usar el navegador, las mismas acciones están disponibles en la línea de comandos:</p>
 <p>Con el AppImage, antepón <code>cli</code>: <code>./ClassGuard-*.AppImage cli status</code>. Desde el código:</p>
 <pre><code>python3 classguard.py blockall     # cortar todo internet
@@ -531,7 +576,7 @@ python3 classguard.py whitelist    # solo dominios de whitelist.txt
 python3 classguard.py blockai      # bloquear IA
 python3 classguard.py status       # ver estado
 python3 classguard.py restore      # volver a la normalidad
-python3 classguard.py update       # actualizar el sistema (apt)</code></pre>
+python3 classguard.py update       # actualizar el sistema (apartado 8)</code></pre>
     <p>Te pedirá una vez la contraseña <code>sudo</code>. Para usar otro fichero de configuración añade
       <code>--config otra_aula.json</code>.</p>
     <p>Opciones de la interfaz web: <code>--port 9000</code> cambia el puerto y <code>--no-open</code> evita que se
@@ -539,7 +584,7 @@ python3 classguard.py update       # actualizar el sistema (apt)</code></pre>
   </section>
 
   <section id="listas">
-    <h2>12. Editar las listas de dominios</h2>
+    <h2>13. Editar las listas de dominios</h2>
     <p>Son ficheros de texto con <b>un dominio por línea</b>, en <code>~/.config/classguard/</code> si usas el AppImage o en la carpeta del proyecto si usas el código:</p>
     <ul>
       <li><code>whitelist.txt</code>: dominios permitidos en el modo «Solo lista blanca» (p. ej. el Moodle del centro).</li>
@@ -560,7 +605,7 @@ youtubei.googleapis.com</code></pre>
   </section>
 
   <section id="problemas">
-    <h2>13. Problemas frecuentes</h2>
+    <h2>14. Problemas frecuentes</h2>
     <details><summary>Aparece «No existe config.json»</summary>
       <p>Pulsa <span class="btn n">Cargar .json…</span> y elige el fichero de tu aula, o copia <code>config.example.json</code> como <code>config.json</code> (en <code>~/.config/classguard/</code> con el AppImage), ajústalo y pulsa <span class="btn n">Recargar config</span>.</p></details>
     <details><summary>Un equipo sale siempre con ✗</summary>
@@ -573,7 +618,7 @@ youtubei.googleapis.com</code></pre>
         Ten en cuenta que puede tardar hasta 30 segundos en actualizarse.</p></details>
     <details><summary>He añadido una web a <code>ai-blocklist.txt</code> y sigue abriéndose</summary>
       <p>Vuelve a pulsar <span class="btn r">Bloquear IA</span> para que los equipos reciban la lista nueva. Si aun así abre,
-        probablemente la web usa otros subdominios (por ejemplo <code>m.youtube.com</code>): añádelos también (apartado 12).</p></details>
+        probablemente la web usa otros subdominios (por ejemplo <code>m.youtube.com</code>): añádelos también (apartado 13).</p></details>
     <details><summary>El aviso o la captura fallan con «sin sesión gráfica activa»</summary>
       <p>En ese equipo no hay nadie con la sesión iniciada en el escritorio (está en la pantalla de inicio de sesión).
         Solo se puede avisar, capturar o bloquear cuando el alumno ha entrado en su sesión.</p></details>
@@ -590,6 +635,11 @@ youtubei.googleapis.com</code></pre>
     <details><summary>«Encender» envía el aviso (✓) pero un equipo no arranca</summary>
       <p>El registro solo confirma que se envió la orden de encendido. Si el equipo no arranca, revisa que tenga el
         Wake-on-LAN activado en la BIOS/UEFI y en la tarjeta de red, y que esté enchufado a la corriente y a la red.</p></details>
+    <details><summary>«Actualizar equipos» falla en un equipo</summary>
+      <p>Si el aviso es <i>«hay reglas de ClassGuard activas»</i>, ese equipo sigue con un modo de bloqueo: pulsa
+        <span class="btn g">Restaurar examen</span> y vuelve a actualizar. Si es <i>«falló apt-get update»</i> o
+        <i>«falló apt-get upgrade»</i>, revisa que el equipo tenga internet y consulta <code>/var/log/classguard-update.log</code>
+        en ese equipo para ver el error completo (apartado 8).</p></details>
     <details><summary>La operación tarda mucho</summary>
       <p>Normalmente se debe a los reintentos sobre equipos apagados. Puedes pulsar <span class="btn r">Cancelar operación</span>; los equipos
         que ya mostraban ✓ conservan el cambio.</p></details>
@@ -601,7 +651,7 @@ youtubei.googleapis.com</code></pre>
   </section>
 
   <section id="limites">
-    <h2>14. Limitaciones</h2>
+    <h2>15. Limitaciones</h2>
     <ul>
       <li>El filtrado se hace por la IP de cada dominio. Algunos servicios cambian de IP a menudo; ClassGuard las
         actualiza cada 30 segundos, pero puede haber un breve desfase.</li>
