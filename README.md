@@ -1,4 +1,4 @@
-# ClassGuard — control de red del aula durante exámenes
+# ClassGuard — control de red del aula durante exámenes y gestión del aula
 
 Herramienta para que el **profesor**, desde su equipo, controle el acceso a la
 red de los equipos de los **alumnos** del aula durante un examen. Pensada para

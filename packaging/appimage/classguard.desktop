@@ -1,7 +1,7 @@
 [Desktop Entry]
 Type=Application
 Name=ClassGuard
-GenericName=Control de red del aula
+GenericName=Control de red y gestión del aula
 Comment=Corta o limita internet en los equipos del aula durante los exámenes
 Exec=classguard
 Icon=classguard
