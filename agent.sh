@@ -72,11 +72,17 @@ resolve_once() {
     d="${d%%#*}"                      # quita comentarios en línea
     d="$(echo "$d" | tr -d '[:space:]')"
     [ -z "$d" ] && continue
-    for ip in $(getent ahostsv4 "$d" 2>/dev/null | awk '{print $1}' | sort -u); do
-      nft add element inet "$TABLE" "${KIND}4" "{ $ip }" 2>/dev/null || true
-    done
-    for ip in $(getent ahostsv6 "$d" 2>/dev/null | awk '{print $1}' | sort -u); do
-      nft add element inet "$TABLE" "${KIND}6" "{ $ip }" 2>/dev/null || true
+    # El dominio desnudo y su www. suelen resolver a IPs distintas
+    # (p. ej. youtube.com frente a www.youtube.com): resuelve ambos.
+    names="$d"
+    case "$d" in www.*) ;; *) names="$d www.$d" ;; esac
+    for n in $names; do
+      for ip in $(getent ahostsv4 "$n" 2>/dev/null | awk '{print $1}' | sort -u); do
+        nft add element inet "$TABLE" "${KIND}4" "{ $ip }" 2>/dev/null || true
+      done
+      for ip in $(getent ahostsv6 "$n" 2>/dev/null | awk '{print $1}' | sort -u); do
+        nft add element inet "$TABLE" "${KIND}6" "{ $ip }" 2>/dev/null || true
+      done
     done
   done < "$DOMAINS"
 }
