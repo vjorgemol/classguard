@@ -351,6 +351,11 @@ cp config.example.json config.json</code></pre>
         detiene la acción en curso cuanto antes, sin esperar a los reintentos. <span class="btn n">Salir</span> cierra ClassGuard
         (avisa si quedan equipos bloqueados).</span></li>
     </ul>
+    <p>Debajo de las acciones del examen, la tarjeta <b>«Mantenimiento»</b> tiene el botón
+      <span class="btn n">Actualizar equipos</span>: instala las actualizaciones del sistema (<code>apt</code>) en todos
+      los equipos encendidos. Hazlo fuera del examen: un equipo con el bloqueo activo no tiene internet y se salta
+      (restaura antes). Puede tardar varios minutos; el registro indica cuántos paquetes se actualizaron en cada equipo
+      y si <b>requiere reiniciar</b>. La salida completa queda en <code>/var/log/classguard-update.log</code> de cada alumno.</p>
     <p>Arriba de las acciones hay dos pestañas: <b>«Examen»</b> (la que ves en la maqueta) y <b>«Pantallas»</b>,
       que se explica en el apartado siguiente.</p>
     <div class="note"><p><b>Seguridad:</b> la página solo es accesible desde tu propio equipo (<code>127.0.0.1</code>); nadie
@@ -524,7 +529,8 @@ cp config.example.json config.json</code></pre>
 python3 classguard.py whitelist    # solo dominios de whitelist.txt
 python3 classguard.py blockai      # bloquear IA
 python3 classguard.py status       # ver estado
-python3 classguard.py restore      # volver a la normalidad</code></pre>
+python3 classguard.py restore      # volver a la normalidad
+python3 classguard.py update       # actualizar el sistema (apt)</code></pre>
     <p>Te pedirá una vez la contraseña <code>sudo</code>. Para usar otro fichero de configuración añade
       <code>--config otra_aula.json</code>.</p>
     <p>Opciones de la interfaz web: <code>--port 9000</code> cambia el puerto y <code>--no-open</code> evita que se
