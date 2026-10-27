@@ -342,10 +342,7 @@ function markTileOff(ip, msg){
   const full = t.querySelector("a.full");
   if(full) full.removeAttribute("href");
   // si estaba marcado como bloqueado, ya no aplica
-  t.dataset.locked = "";
-  t.classList.remove("locked");
-  const lb = t.querySelector(".lockbadge");
-  if(lb) lb.textContent = "";
+  setLock(ip, false);
 }
 
 function screensProgress(m){
