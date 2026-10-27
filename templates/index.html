@@ -70,21 +70,23 @@
   .tab{background:var(--neutral);color:var(--ink);padding:9px 18px;}
   .tab:hover:not(.active){background:var(--neutral-hi);}
   .tab.active{background:var(--ink);color:#fff;}
-  #grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));
+  #grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));
         gap:12px;margin-top:14px;}
   .tile{border:1px solid var(--border);border-radius:9px;overflow:hidden;
         background:#fbfcfd;}
   .tile img{display:block;width:100%;height:150px;object-fit:cover;cursor:pointer;
             background:#11161d;}
   .tile.off img{opacity:.35;}
-  .tile .tbar{display:flex;align-items:center;gap:8px;padding:7px 10px;font-size:13px;}
-  .tile .tbar b{font-weight:600;}
+  .tile .tbar{display:flex;align-items:center;gap:5px;padding:7px 8px;font-size:13px;}
+  .tile .tbar > *{flex-shrink:0;}
+  /* Solo la IP cede espacio, para que los iconos nunca se recorten. */
+  .tile .tbar b{font-weight:600;flex-shrink:1;min-width:0;
+                overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
   .tile .tbar .grow{flex:1;}
   .tile .tbar a{color:var(--muted);text-decoration:none;font-size:16px;line-height:1;}
   .tile .tbar a:hover{color:var(--ink);}
   .tile .send{padding:5px 10px;font-size:12px;}
   .tile.locked{outline:2px solid var(--restrict);outline-offset:-2px;}
-  .tile .lockbadge{color:var(--restrict);font-size:13px;}
 </style>
 </head>
 <body>
@@ -310,7 +312,7 @@ function tile(ip){
   img.onclick = () => sendMessageTo(ip);
   const bar = document.createElement("div");
   bar.className = "tbar";
-  bar.innerHTML = '<b>' + ip + '</b><span class="lockbadge"></span><span class="grow"></span>' +
+  bar.innerHTML = '<b title="' + ip + '">' + ip + '</b><span class="grow"></span>' +
                   '<button class="send b-restrict" onclick="sendMessageTo(\'' + ip + '\')">Aviso</button>' +
                   '<a class="lock" style="cursor:pointer" title="Bloquear pantalla">🔒</a>' +
                   '<a class="shot" title="Guardar captura con fecha/hora" style="cursor:pointer">📷</a>' +
@@ -405,7 +407,6 @@ function setLock(ip, locked){
     a.textContent = locked ? "🔓" : "🔒";
     a.title = locked ? "Desbloquear pantalla" : "Bloquear pantalla";
   }
-  t.querySelector(".lockbadge").textContent = locked ? " 🔒" : "";
 }
 
 async function toggleLock(ip){

@@ -2,6 +2,11 @@
 # El resto de internet sigue funcionando.
 # Nota: se bloquea por IP resuelta de estos dominios; amplía la lista según
 # tus necesidades. Un alumno con acceso directo a una IP cruda podría evadirlo.
+# Cada dominio se resuelve tal cual y con "www." delante; otros subdominios
+# (m., api., …) deben añadirse explícitamente. Ejemplo para YouTube:
+#   youtube.com
+#   m.youtube.com
+#   youtubei.googleapis.com
 
 # Chatbots / asistentes
 chat.openai.com
