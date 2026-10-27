@@ -160,6 +160,8 @@
           <button class="small b-restrict" onclick="messageAll()">Avisar</button>
           <button class="small b-restrict" onclick="lockAll(false)">Bloquear</button>
           <button class="small b-success" onclick="lockAll(true)">Desbloquear</button>
+          <button class="small b-success" style="margin-left:auto" onclick="wakeAll()">Encender</button>
+          <button class="small b-restrict" onclick="powerOffAll()">Apagar</button>
         </div>
         <div class="row" style="margin-top:12px;align-items:stretch;">
           <textarea id="msgText2" rows="2" style="flex:1;min-width:240px;font:inherit;
@@ -333,7 +335,14 @@ function updateTile(ip, file){
 function markTileOff(ip, msg){
   const t = tile(ip);
   t.classList.add("off");
-  t.querySelector("img").title = ip + " — " + (msg || "sin captura");
+  // Borra la captura: un equipo caído/apagado no debe seguir mostrando pantalla.
+  const img = t.querySelector("img");
+  img.removeAttribute("src");
+  img.title = ip + " — " + (msg || "sin captura");
+  const full = t.querySelector("a.full");
+  if(full) full.removeAttribute("href");
+  // si estaba marcado como bloqueado, ya no aplica
+  setLock(ip, false);
 }
 
 function screensProgress(m){
@@ -421,6 +430,20 @@ async function lockAll(unlock){
   const verb = unlock ? "Desbloquear" : "Bloquear";
   if(!confirm(verb + " la pantalla de TODOS los equipos encendidos. ¿Continuar?")) return;
   await post("/api/lock_all", {password:pw, unlock});
+}
+
+async function wakeAll(){
+  // WoL no necesita contraseña: envía magic packets a las MAC conocidas.
+  if(!confirm("Encender por Wake-on-LAN todos los equipos con MAC conocida. ¿Continuar?")) return;
+  await post("/api/wake_all", {});
+}
+
+async function powerOffAll(){
+  const pw = $("pw").value;
+  if(!pw){ alert("Escribe la contraseña sudo."); return; }
+  if(!confirm("⚠ APAGAR todos los equipos encendidos del aula. ¿Continuar?")) return;
+  if(!confirm("Esto cerrará las sesiones de los alumnos. ¿Seguro que quieres apagarlos?")) return;
+  await post("/api/poweroff_all", {password:pw});
 }
 
 function cancelAction(){

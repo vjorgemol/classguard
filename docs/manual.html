@@ -110,6 +110,18 @@
   .pin{position:absolute;top:-9px;right:-9px;width:22px;height:22px;border-radius:50%;
        background:var(--info);color:#fff;font-size:12px;font-weight:700;display:flex;
        align-items:center;justify-content:center;}
+  .mtabs{display:flex;gap:6px;margin-bottom:10px;}
+  .mtabs span{font-size:13px;font-weight:600;border-radius:6px;padding:4px 12px;
+              background:var(--neutral);color:var(--neutral-ink);}
+  .mtabs span.on{background:var(--ink);color:var(--bg);}
+  .mwall{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px;}
+  .mtile{border:1px solid var(--border);border-radius:7px;overflow:hidden;background:var(--card);}
+  .mtile .scr{height:62px;background:#11161d;}
+  .mtile.off .scr{opacity:.35;}
+  .mtile.lk{outline:2px solid var(--restrict);outline-offset:-2px;}
+  .mtile .tb{display:flex;align-items:center;gap:4px;padding:5px 6px;font-size:11px;}
+  .mtile .tb b{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .mtile .tb .btn{font-size:10px;padding:1px 6px;}
   .legend{list-style:none;padding:0;}
   .legend li{display:flex;gap:10px;margin-bottom:6px;}
   .legend .pin{position:static;flex:none;margin-top:2px;}
@@ -123,6 +135,7 @@
     nav.toc ol{columns:1;}
     .mgrid{grid-template-columns:1fr 1fr;}
     .mgrid .s2{grid-column:span 2;}
+    .mwall{grid-template-columns:1fr;}
   }
   @media print{
     body{background:#fff;color:#000;}
@@ -152,6 +165,7 @@
       <li><a href="#configuracion">Configuración del aula</a></li>
       <li><a href="#examen">El día del examen, paso a paso</a></li>
       <li><a href="#interfaz">La interfaz web</a></li>
+      <li><a href="#pantallas">Pestaña «Pantallas»</a></li>
       <li><a href="#modos">Los modos de bloqueo</a></li>
       <li><a href="#registro">Cómo leer el registro</a></li>
       <li><a href="#pendientes">Equipos pendientes de restaurar</a></li>
@@ -169,6 +183,9 @@
     <p>Funciona así: el programa recorre las IPs del aula, entra por SSH en cada equipo de alumno con el usuario
       administrador del centro y aplica unas reglas de cortafuegos (<code>nftables</code>). Los equipos de alumno
       no necesitan tener nada instalado.</p>
+    <p>Además, desde la pestaña <b>«Pantallas»</b> puedes ver la pantalla de cada alumno, enviarle un aviso, guardar
+      una captura como constancia o bloquear su teclado y ratón, y también encender o apagar todos los equipos del
+      aula (apartado 7).</p>
     <div class="note"><p><b>Tu equipo nunca se toca.</b> ClassGuard detecta las IPs del ordenador del profesor y
       las excluye automáticamente. La red local del aula también se mantiene, para poder seguir gestionando los
       equipos mientras están bloqueados.</p></div>
@@ -186,6 +203,10 @@
       <li>Ubuntu 22.04 o posterior.</li>
       <li>Servicio SSH activo.</li>
       <li>Un usuario con permisos <code>sudo</code> (el mismo en todos los equipos y con la misma contraseña).</li>
+      <li>Solo para la pestaña «Pantallas»: escritorio KDE/Plasma o GNOME con sus utilidades habituales
+        (<code>spectacle</code> o <code>gnome-screenshot</code> para capturar; <code>kdialog</code>, <code>zenity</code> o
+        <code>notify-send</code> para avisar; <code>xinput</code> para bloquear). Suelen venir de serie, pero conviene
+        comprobarlo en un equipo del aula antes del examen.</li>
     </ul>
   </section>
 
@@ -201,7 +222,8 @@
       <li>Ábrelo con doble clic. Se abrirá ClassGuard en el navegador.</li>
     </ol>
     <p>Con el AppImage, tus datos (<code>config.json</code>, <code>whitelist.txt</code>, <code>ai-blocklist.txt</code>)
-      se guardan en la carpeta <code>~/.config/classguard/</code>. La primera vez se crea con las listas por defecto;
+      se guardan en la carpeta <code>~/.config/classguard/</code>, junto con las capturas de pantalla (subcarpeta
+      <code>capturas/</code>) y las direcciones MAC aprendidas para encender los equipos (<code>macs.json</code>). La primera vez se crea con las listas por defecto;
       la configuración del aula la puedes cargar directamente desde la web con <span class="btn n">Cargar .json…</span>.</p>
     <p>Si vuelves a abrir el AppImage cuando ya está en marcha, simplemente se muestra de nuevo en el navegador.</p>
     <h3>Alternativa: desde el código fuente</h3>
@@ -237,7 +259,9 @@ cp config.example.json config.json</code></pre>
         <tr><td><code>retries</code></td><td>Reintentos sobre los equipos que fallan (por defecto 2).</td></tr>
         <tr><td><code>restore_retries</code></td><td>Reintentos al restaurar (por defecto 5).</td></tr>
         <tr><td><code>retry_delay</code></td><td>Segundos de espera entre reintentos (por defecto 15).</td></tr>
-        <tr><td><code>whitelist_file</code>, <code>ai_blocklist_file</code></td><td>Ficheros con las listas de dominios (ver apartado 11).</td></tr>
+        <tr><td><code>macs</code></td><td>Opcional. Direcciones MAC para encender equipos por Wake-on-LAN, p. ej.
+          <code>{"192.168.1.23": "aa:bb:cc:dd:ee:ff"}</code>. Normalmente no hace falta: ClassGuard las aprende solo (apartado 7).</td></tr>
+        <tr><td><code>whitelist_file</code>, <code>ai_blocklist_file</code></td><td>Ficheros con las listas de dominios (ver apartado 12).</td></tr>
       </tbody>
     </table>
     </div>
@@ -249,7 +273,8 @@ cp config.example.json config.json</code></pre>
     <h2>5. El día del examen, paso a paso</h2>
     <ol class="steps">
       <li><strong>Enciende los equipos de los alumnos.</strong>
-        Conviene hacerlo antes de aplicar el bloqueo; los equipos apagados se omiten.</li>
+        Conviene hacerlo antes de aplicar el bloqueo; los equipos apagados se omiten. Si ClassGuard ya los conoce,
+        puedes encenderlos todos desde «Pantallas» → <span class="btn g">Encender</span> (apartado 7).</li>
       <li><strong>Abre ClassGuard.</strong>
         Haz doble clic en el AppImage (o, desde el código, ejecuta <code>python3 classguard_web.py</code>).
         El navegador se abre solo en <code>http://127.0.0.1:8765</code>.</li>
@@ -262,13 +287,19 @@ cp config.example.json config.json</code></pre>
         <span class="btn r">Bloquear IA</span>. Confirma en el aviso que aparece.</li>
       <li><strong>Revisa el registro.</strong>
         Cada equipo aparece con ✓ (aplicado) o ✗ (fallo). Espera a que la barra inferior vuelva a «Listo.».</li>
+      <li><strong>Durante el examen, si lo necesitas, usa la pestaña «Pantallas»</strong> para vigilar las pantallas,
+        avisar a un alumno o bloquear su equipo (apartado 7).</li>
+      <li><strong>Si has bloqueado alguna pantalla, desbloquéala</strong> desde «Pantallas» →
+        <span class="btn g">Desbloquear</span> (a todos) antes de terminar.</li>
       <li><strong>Al terminar el examen, pulsa <span class="btn g">Restaurar examen</span>.</strong>
         Los equipos vuelven a la normalidad. No cierres la aplicación sin restaurar.</li>
+      <li><strong>Si quieres, apaga el aula</strong> desde «Pantallas» → <span class="btn r">Apagar</span>.</li>
       <li><strong>Pulsa <span class="btn n">Salir</span></strong> para cerrar ClassGuard.
         Cerrar solo la pestaña del navegador no detiene la aplicación.</li>
     </ol>
     <div class="warn"><p><b class="t">Importante:</b> el bloqueo <b>no se quita solo</b>. Sigue activo aunque cierres
-      ClassGuard o reinicies tu equipo, hasta que pulses «Restaurar examen».</p></div>
+      ClassGuard o reinicies tu equipo, hasta que pulses «Restaurar examen». Y «Restaurar examen» solo devuelve
+      internet: <b>no desbloquea las pantallas</b>; eso se hace con «Desbloquear».</p></div>
   </section>
 
   <section id="interfaz">
@@ -284,6 +315,7 @@ cp config.example.json config.json</code></pre>
             <div class="mrow" style="margin-top:8px"><b>Aula:</b> 192.168.1.0/24 | <b>equipos:</b> 28 / 30 encendidos</div>
             <div class="mrow" style="margin-top:8px">Contraseña sudo: <span class="mfield">••••••••</span> ☐ ver</div>
           </div>
+          <div class="mtabs"><span class="on">Examen</span><span>Pantallas</span></div>
           <div class="mcard"><span class="pin">2</span>
             <div class="msec">Acciones del examen</div>
             <div class="mgrid">
@@ -309,21 +341,132 @@ cp config.example.json config.json</code></pre>
     <ul class="legend">
       <li><span class="pin">1</span><span><b>Configuración:</b> datos del aula leídos de <code>config.json</code>, botones para cargar otro fichero o
         releerlo tras editarlo, y el campo de la contraseña <code>sudo</code> (marca «ver» para comprobar lo que has escrito).</span></li>
-      <li><span class="pin">2</span><span><b>Acciones del examen:</b> los tres modos de bloqueo (rojo), restaurar (verde) y ver estado.
+      <li><span class="pin">2</span><span><b>Acciones del examen</b> (pestaña «Examen»): los tres modos de bloqueo (rojo), restaurar (verde) y ver estado.
         Se desactivan mientras hay una operación en curso.</span></li>
       <li><span class="pin">3</span><span><b>Aviso de pendientes:</b> solo aparece si quedaron equipos sin restaurar de una sesión
-        anterior (ver apartado 9).</span></li>
-      <li><span class="pin">4</span><span><b>Registro:</b> resultado en vivo, equipo por equipo.</span></li>
+        anterior (ver apartado 10).</span></li>
+      <li><span class="pin">4</span><span><b>Registro:</b> resultado en vivo, equipo por equipo. También recoge el
+        resultado de los avisos, capturas y bloqueos que hagas desde «Pantallas».</span></li>
       <li><span class="pin">5</span><span><b>Barra de estado:</b> indica «Trabajando…» o «Listo.». <span class="btn r">Cancelar operación</span>
         detiene la acción en curso cuanto antes, sin esperar a los reintentos. <span class="btn n">Salir</span> cierra ClassGuard
         (avisa si quedan equipos bloqueados).</span></li>
     </ul>
+    <p>Arriba de las acciones hay dos pestañas: <b>«Examen»</b> (la que ves en la maqueta) y <b>«Pantallas»</b>,
+      que se explica en el apartado siguiente.</p>
     <div class="note"><p><b>Seguridad:</b> la página solo es accesible desde tu propio equipo (<code>127.0.0.1</code>); nadie
       más en la red la ve. La contraseña no se guarda en disco.</p></div>
   </section>
 
+  <section id="pantallas">
+    <h2>7. Pestaña «Pantallas»</h2>
+    <p>Muestra un <b>mural</b> con la pantalla de cada alumno encendido y permite actuar sobre un equipo concreto o
+      sobre todos a la vez. Todas las acciones, salvo «Encender», necesitan la contraseña <code>sudo</code> escrita arriba.</p>
+    <figure>
+      <div class="mock" role="img" aria-label="Maqueta de la pestaña Pantallas con el mural de equipos">
+        <div class="mb">
+          <div class="mtabs"><span>Examen</span><span class="on">Pantallas</span></div>
+          <div class="mcard">
+            <div class="msec">Pantallas de los alumnos</div>
+            <div class="mrow"><span class="btn n">Actualizar pantallas</span> ☐ auto cada <span class="mfield" style="min-width:36px">20</span> s
+              <span style="margin-left:auto;color:var(--muted)">3/3 pantalla(s) · 10:42:15</span></div>
+            <div class="mrow" style="margin-top:8px"><span style="color:var(--muted)">A todos:</span>
+              <span class="btn r">Avisar</span><span class="btn r">Bloquear</span><span class="btn g">Desbloquear</span>
+              <span class="btn g" style="margin-left:auto">Encender</span><span class="btn r">Apagar</span></div>
+            <div class="mfield" style="margin-top:8px;padding:6px 8px;font-size:13px">Recuerda que durante el examen no puedes consultar webs ni recursos no permitidos.</div>
+            <div class="mwall">
+              <div class="mtile"><div class="scr"></div><div class="tb"><b>192.168.1.101</b><span class="btn r">Aviso</span>🔒 📷 ⤢</div></div>
+              <div class="mtile lk"><div class="scr"></div><div class="tb"><b>192.168.1.102</b><span class="btn r">Aviso</span>🔓 📷 ⤢</div></div>
+              <div class="mtile off"><div class="scr"></div><div class="tb"><b>192.168.1.103</b><span class="btn r">Aviso</span>🔒 📷 ⤢</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <figcaption>Maqueta orientativa. El borde rojo indica una pantalla bloqueada; la casilla en gris, un equipo del que
+        no se ha podido obtener la imagen (por ejemplo, porque está apagado).</figcaption>
+    </figure>
+
+    <h3>El mural</h3>
+    <ul>
+      <li>La primera vez que entras en la pestaña se capturan las pantallas de los equipos <b>encendidos</b> (en
+        paralelo; los apagados se omiten). <span class="btn n">Actualizar pantallas</span> repite el barrido.</li>
+      <li>Marca <b>«auto cada N s»</b> para que se refresque solo mientras tengas abierta la pestaña (mínimo 5 s).</li>
+      <li>Las imágenes del mural se sobrescriben en cada barrido (una por equipo), así que no se acumulan archivos.</li>
+      <li>Si un equipo se apaga o deja de responder, su tarjeta se queda en gris y sin imagen, para que no confundas una
+        pantalla antigua con la actual.</li>
+    </ul>
+
+    <h3>Acciones en cada pantalla</h3>
+    <div class="tablewrap">
+    <table>
+      <thead><tr><th>Control</th><th>Qué hace</th></tr></thead>
+      <tbody>
+        <tr><td>Clic en la imagen o <span class="btn r">Aviso</span></td><td>Envía al alumno el <b>mensaje</b> escrito en el recuadro de texto.
+          Pide confirmación. En el equipo aparece un diálogo («Aviso del profesor») o, si no es posible, una notificación.</td></tr>
+        <tr><td>🔒 / 🔓</td><td><b>Bloquea</b> la pantalla del alumno (pide confirmación). La tarjeta se marca en rojo y el botón pasa a 🔓;
+          vuelve a pulsarlo para <b>desbloquear</b>.</td></tr>
+        <tr><td>📷</td><td>Guarda una <b>captura con fecha y hora</b> para dejar constancia. Aparece en la tarjeta
+          «Capturas guardadas» debajo del mural.</td></tr>
+        <tr><td>⤢</td><td>Abre la imagen actual del mural a tamaño completo en otra pestaña.</td></tr>
+      </tbody>
+    </table>
+    </div>
+    <h3>Acciones a todos los equipos</h3>
+    <p>La fila <b>«A todos»</b> actúa sobre todo el aula a la vez. Cada botón pide confirmación.</p>
+    <div class="tablewrap">
+    <table>
+      <thead><tr><th>Botón</th><th>Qué hace</th></tr></thead>
+      <tbody>
+        <tr><td><span class="btn r">Avisar</span></td><td>Envía el mensaje del recuadro a todos los equipos encendidos.</td></tr>
+        <tr><td><span class="btn r">Bloquear</span> / <span class="btn g">Desbloquear</span></td><td>Bloquea o desbloquea la pantalla
+          de todos los equipos encendidos.</td></tr>
+        <tr><td><span class="btn g">Encender</span></td><td>Enciende por <b>Wake-on-LAN</b> todos los equipos cuya dirección MAC
+          conoce ClassGuard (ver más abajo). No necesita contraseña.</td></tr>
+        <tr><td><span class="btn r">Apagar</span></td><td><b>Apaga</b> todos los equipos encendidos, aunque los alumnos tengan la sesión
+          abierta. Pide <b>doble confirmación</b>, porque se pierde lo que no hayan guardado. Útil para apagar el aula al terminar.</td></tr>
+      </tbody>
+    </table>
+    </div>
+
+    <h3>Encender los equipos (Wake-on-LAN)</h3>
+    <p>Para encender un equipo hace falta conocer su dirección MAC. ClassGuard las <b>aprende solo</b>: cada vez que
+      comprueba qué equipos están encendidos (al actualizar el mural o al lanzar cualquier acción), guarda la MAC de cada
+      uno en <code>macs.json</code>. Así, otro día puede encenderlos aunque estén apagados. Basta con haber usado
+      ClassGuard <b>una vez</b> con el aula encendida.</p>
+    <p>Si lo prefieres, puedes indicarlas a mano en <code>config.json</code> con la opción <code>macs</code> (apartado 4).</p>
+    <p>Para que funcione:</p>
+    <ul>
+      <li>Cada equipo de alumno debe tener el <b>Wake-on-LAN activado</b> en la BIOS/UEFI y en la tarjeta de red
+        (en Linux, <code>sudo ethtool -s eth0 wol g</code>, cambiando <code>eth0</code> por el nombre de la tarjeta).</li>
+      <li>Tu equipo debe estar en la <b>misma red</b> que los alumnos.</li>
+      <li>El encendido tarda lo que tarde en arrancar cada equipo: espera un poco y pulsa
+        <span class="btn n">Actualizar pantallas</span>.</li>
+    </ul>
+
+    <h3>Las capturas guardadas</h3>
+    <p>Las capturas hechas con 📷 se guardan en el equipo del profesor, en <code>~/.config/classguard/capturas/</code>
+      (con el AppImage), con el nombre <code>IP_fecha-hora.png</code>. Pulsa una miniatura para verla a tamaño completo.</p>
+
+    <h3>Cómo funciona el bloqueo</h3>
+    <ul>
+      <li><b>En sesiones X11 el bloqueo es fuerte:</b> se desactivan el teclado y el ratón del alumno y se le muestra un
+        aviso. Como el alumno no tiene <code>sudo</code>, no puede reactivarlos; solo tú, con «Desbloquear». En el registro
+        aparece como <code>OK lock FUERTE</code>.</li>
+      <li><b>En sesiones Wayland el bloqueo es débil:</b> Wayland no permite desactivar la entrada de otra sesión, así que
+        se bloquea la sesión, y el alumno <b>puede</b> desbloquearla con su propia contraseña. En el registro aparece como
+        <code>OK lock DEBIL</code>.</li>
+      <li>Ninguno de los dos es infranqueable: con acceso físico, el alumno puede reiniciar el equipo o cambiar de terminal
+        (<kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>F3</kbd>). Sirve para detenerle en el momento.</li>
+    </ul>
+    <div class="warn"><p><b class="t">Importante:</b> el bloqueo de pantalla no depende de los modos de internet:
+      <b>«Restaurar examen» no lo quita</b>. Antes de terminar, pulsa «A todos» → <span class="btn g">Desbloquear</span>.
+      Si recargas la página, el mural deja de marcar en rojo las pantallas bloqueadas, pero «Desbloquear» (a todos)
+      sigue funcionando igual.</p></div>
+    <div class="note"><p><b>Uso responsable:</b> como el resto de ClassGuard, estas funciones son para equipos gestionados
+      por el centro. Úsalas de forma transparente y conforme a la política del centro durante los exámenes.</p></div>
+  </section>
+
   <section id="modos">
-    <h2>7. Los modos de bloqueo</h2>
+    <h2>8. Los modos de bloqueo</h2>
     <div class="tablewrap">
     <table>
       <thead><tr><th>Botón</th><th>Qué hace en los equipos de alumno</th><th>Cuándo usarlo</th></tr></thead>
@@ -345,7 +488,7 @@ cp config.example.json config.json</code></pre>
   </section>
 
   <section id="registro">
-    <h2>8. Cómo leer el registro</h2>
+    <h2>9. Cómo leer el registro</h2>
     <div class="tablewrap">
     <table>
       <thead><tr><th>Símbolo</th><th>Significado</th></tr></thead>
@@ -365,7 +508,7 @@ cp config.example.json config.json</code></pre>
   </section>
 
   <section id="pendientes">
-    <h2>9. Equipos pendientes de restaurar</h2>
+    <h2>10. Equipos pendientes de restaurar</h2>
     <p>ClassGuard recuerda qué equipos tienen un bloqueo aplicado. Si cierras la aplicación y alguno quedó sin
       restaurar (por ejemplo, porque estaba apagado), al volver a abrirla verás un aviso amarillo:</p>
     <div class="mcard pend" style="margin:10px 0">⚠ 2 equipo(s) de un examen anterior sin restaurar: 192.168.1.112, 192.168.1.118</div>
@@ -374,7 +517,7 @@ cp config.example.json config.json</code></pre>
   </section>
 
   <section id="terminal">
-    <h2>10. Uso desde la terminal</h2>
+    <h2>11. Uso desde la terminal</h2>
     <p>Si prefieres no usar el navegador, las mismas acciones están disponibles en la línea de comandos:</p>
 <p>Con el AppImage, antepón <code>cli</code>: <code>./ClassGuard-*.AppImage cli status</code>. Desde el código:</p>
 <pre><code>python3 classguard.py blockall     # cortar todo internet
@@ -389,7 +532,7 @@ python3 classguard.py restore      # volver a la normalidad</code></pre>
   </section>
 
   <section id="listas">
-    <h2>11. Editar las listas de dominios</h2>
+    <h2>12. Editar las listas de dominios</h2>
     <p>Son ficheros de texto con <b>un dominio por línea</b>, en <code>~/.config/classguard/</code> si usas el AppImage o en la carpeta del proyecto si usas el código:</p>
     <ul>
       <li><code>whitelist.txt</code>: dominios permitidos en el modo «Solo lista blanca» (p. ej. el Moodle del centro).</li>
@@ -397,13 +540,20 @@ python3 classguard.py restore      # volver a la normalidad</code></pre>
     </ul>
 <pre><code>moodle.miinstituto.es
 aulavirtual.gva.es</code></pre>
-    <p>Los cambios se aplican la próxima vez que pulses el modo correspondiente.</p>
+    <p>Los cambios se aplican la próxima vez que pulses el modo correspondiente (los equipos guardan una copia de la
+      lista al aplicar el modo).</p>
+    <p>Cada dominio de la lista se aplica también con <code>www.</code> delante: si escribes <code>youtube.com</code>,
+      queda incluido <code>www.youtube.com</code>. Los demás subdominios (<code>m.</code>, <code>api.</code>…) usan otras IPs
+      y hay que añadirlos uno a uno. Por ejemplo, para bloquear YouTube en «Bloquear IA»:</p>
+<pre><code>youtube.com
+m.youtube.com
+youtubei.googleapis.com</code></pre>
     <div class="note"><p><b>Consejo:</b> antes del examen, prueba la lista blanca en un equipo y comprueba que la plataforma carga
       completa. Algunas webs cargan recursos de otros dominios que también hay que añadir.</p></div>
   </section>
 
   <section id="problemas">
-    <h2>12. Problemas frecuentes</h2>
+    <h2>13. Problemas frecuentes</h2>
     <details><summary>Aparece «No existe config.json»</summary>
       <p>Pulsa <span class="btn n">Cargar .json…</span> y elige el fichero de tu aula, o copia <code>config.example.json</code> como <code>config.json</code> (en <code>~/.config/classguard/</code> con el AppImage), ajústalo y pulsa <span class="btn n">Recargar config</span>.</p></details>
     <details><summary>Un equipo sale siempre con ✗</summary>
@@ -414,6 +564,25 @@ aulavirtual.gva.es</code></pre>
     <details><summary>Con «Solo lista blanca» una web permitida no carga bien</summary>
       <p>Probablemente usa otros dominios (imágenes, vídeos, inicio de sesión). Añádelos a <code>whitelist.txt</code> y vuelve a pulsar el modo.
         Ten en cuenta que puede tardar hasta 30 segundos en actualizarse.</p></details>
+    <details><summary>He añadido una web a <code>ai-blocklist.txt</code> y sigue abriéndose</summary>
+      <p>Vuelve a pulsar <span class="btn r">Bloquear IA</span> para que los equipos reciban la lista nueva. Si aun así abre,
+        probablemente la web usa otros subdominios (por ejemplo <code>m.youtube.com</code>): añádelos también (apartado 12).</p></details>
+    <details><summary>El aviso o la captura fallan con «sin sesión gráfica activa»</summary>
+      <p>En ese equipo no hay nadie con la sesión iniciada en el escritorio (está en la pantalla de inicio de sesión).
+        Solo se puede avisar, capturar o bloquear cuando el alumno ha entrado en su sesión.</p></details>
+    <details><summary>La captura falla con «no se pudo capturar» o el aviso con «no hay kdialog/zenity/notify-send»</summary>
+      <p>Falta la utilidad correspondiente en el equipo del alumno (ver apartado 2). Instálala o pide al administrador
+        del centro que la incluya en la imagen de los equipos.</p></details>
+    <details><summary>En el registro aparece <code>lock DEBIL</code></summary>
+      <p>El equipo usa una sesión Wayland, donde solo se puede bloquear la sesión y el alumno puede desbloquearla con su
+        contraseña (apartado 7). Para un bloqueo fuerte, los equipos deben iniciar sesión en X11.</p></details>
+    <details><summary>«Encender» dice «No hay MAC conocidas todavía»</summary>
+      <p>ClassGuard aún no ha visto los equipos encendidos. Enciéndelos a mano una vez y pulsa
+        <span class="btn n">Actualizar pantallas</span> (o cualquier acción): a partir de entonces ya podrá encenderlos.
+        También puedes indicar las MAC en <code>config.json</code> (apartado 4).</p></details>
+    <details><summary>«Encender» envía el aviso (✓) pero un equipo no arranca</summary>
+      <p>El registro solo confirma que se envió la orden de encendido. Si el equipo no arranca, revisa que tenga el
+        Wake-on-LAN activado en la BIOS/UEFI y en la tarjeta de red, y que esté enchufado a la corriente y a la red.</p></details>
     <details><summary>La operación tarda mucho</summary>
       <p>Normalmente se debe a los reintentos sobre equipos apagados. Puedes pulsar <span class="btn r">Cancelar operación</span>; los equipos
         que ya mostraban ✓ conservan el cambio.</p></details>
@@ -425,12 +594,15 @@ aulavirtual.gva.es</code></pre>
   </section>
 
   <section id="limites">
-    <h2>13. Limitaciones</h2>
+    <h2>14. Limitaciones</h2>
     <ul>
       <li>El filtrado se hace por la IP de cada dominio. Algunos servicios cambian de IP a menudo; ClassGuard las
         actualiza cada 30 segundos, pero puede haber un breve desfase.</li>
       <li>Un alumno que conozca la contraseña <code>sudo</code> de su equipo puede deshacer el bloqueo. No la compartas.</li>
-      <li>«Bloquear IA» solo bloquea los servicios incluidos en la lista; los no listados siguen accesibles.</li>
+      <li>«Bloquear IA» solo bloquea los servicios incluidos en la lista (y su variante <code>www.</code>); los no
+        listados siguen accesibles. Algunos servicios grandes, como los de Google, comparten servidores: bloquear uno
+        puede afectar a otros.</li>
+      <li>El bloqueo de pantalla es débil en Wayland y, en cualquier caso, no impide reiniciar el equipo.</li>
       <li>Para un control imposible de saltar, el filtrado debe hacerse en el router o cortafuegos del aula.</li>
     </ul>
   </section>
